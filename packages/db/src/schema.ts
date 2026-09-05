@@ -19,6 +19,7 @@ import {
 export const appRole = pgEnum('app_role', ['super_admin', 'admin_agencia', 'agente', 'contable']);
 export const markupScope = pgEnum('markup_scope', ['agency_default', 'provider', 'product_type', 'product']);
 export const markupCalc = pgEnum('markup_calc', ['percent', 'fixed']);
+export const quoteStatus = pgEnum('quote_status', ['draft', 'sent', 'approved', 'rejected', 'expired']);
 
 // ---------- Auth.js ----------
 export const users = pgTable('users', {
@@ -82,6 +83,8 @@ export const agencies = pgTable('agencies', {
   displayCurrency: char('display_currency', { length: 3 }).notNull().default('COP'),
   settings: jsonb('settings').notNull().default({}),
   active: boolean('active').notNull().default(true),
+  bankFeePercent: numeric('bank_fee_percent', { precision: 6, scale: 3 }).notNull().default('3.0'),
+  quoteValidityDays: integer('quote_validity_days').notNull().default(7),
   createdBy: uuid('created_by').references(() => users.id),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -126,6 +129,61 @@ export const exchangeRates = pgTable(
   },
   (t) => ({ pk: primaryKey({ columns: [t.rateDate, t.baseCurrency, t.quoteCurrency] }) }),
 );
+
+export const quotes = pgTable('quotes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  agencyId: uuid('agency_id')
+    .notNull()
+    .references(() => agencies.id, { onDelete: 'cascade' }),
+  agentId: uuid('agent_id')
+    .notNull()
+    .references(() => users.id),
+  consecutivo: text('consecutivo').unique(),
+  status: quoteStatus('status').notNull().default('draft'),
+  title: text('title'),
+  clientName: text('client_name'),
+  clientEmail: text('client_email'),
+  clientPhone: text('client_phone'),
+  trmCopPerUsd: numeric('trm_cop_per_usd', { precision: 16, scale: 6 }),
+  trmDate: date('trm_date', { mode: 'string' }),
+  bankFeePercent: numeric('bank_fee_percent', { precision: 6, scale: 3 }),
+  notes: text('notes'),
+  validUntil: date('valid_until', { mode: 'string' }),
+  publicToken: text('public_token').unique(),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const quoteOptions = pgTable('quote_options', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  quoteId: uuid('quote_id')
+    .notNull()
+    .references(() => quotes.id, { onDelete: 'cascade' }),
+  position: integer('position').notNull().default(1),
+  label: text('label'),
+  provider: text('provider').notNull().default('liteapi'),
+  providerRef: jsonb('provider_ref'),
+  hotelName: text('hotel_name'),
+  hotelCity: text('hotel_city'),
+  hotelStars: integer('hotel_stars'),
+  hotelImage: text('hotel_image'),
+  checkIn: date('check_in', { mode: 'string' }),
+  checkOut: date('check_out', { mode: 'string' }),
+  nights: integer('nights'), // generado en DB
+  occupancy: jsonb('occupancy'),
+  board: text('board'),
+  netCostUsd: numeric('net_cost_usd', { precision: 12, scale: 2 }).notNull(),
+  markupPercent: numeric('markup_percent', { precision: 9, scale: 4 }).notNull().default('0'),
+  markupFixedUsd: numeric('markup_fixed_usd', { precision: 12, scale: 2 }).notNull().default('0'),
+  bankFeePercent: numeric('bank_fee_percent', { precision: 6, scale: 3 }).notNull().default('0'),
+  saleUsd: numeric('sale_usd', { precision: 12, scale: 2 }).notNull().default('0'),
+  saleCop: numeric('sale_cop', { precision: 14, scale: 2 }),
+  selected: boolean('selected').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const auditLog = pgTable('audit_log', {
   id: bigint('id', { mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),

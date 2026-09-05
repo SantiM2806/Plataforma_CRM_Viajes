@@ -10,8 +10,8 @@ const nextConfig = {
   reactStrictMode: true,
   // Raíz del monorepo (evita que Next infiera un lockfile ajeno como raíz).
   outputFileTracingRoot: join(here, '../../'),
-  // Compila el paquete workspace (TS) del monorepo.
-  transpilePackages: ['@travelkit/db'],
+  // Compila los paquetes workspace (TS) del monorepo.
+  transpilePackages: ['@travelkit/db', '@travelkit/core'],
   // Mantiene fuera del bundle deps nativas / de Node (se cargan en runtime).
   serverExternalPackages: ['pg', '@node-rs/argon2'],
 };

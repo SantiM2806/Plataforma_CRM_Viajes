@@ -24,6 +24,11 @@ SaaS **multi-tenant** CRM/CX para agencias de viajes. Ciclo: cotizar → gestion
 - Dos URLs de Postgres: `DATABASE_URL` (admin, migraciones) y `DATABASE_APP_URL` (rol `crm_app`, runtime con RLS).
 - Nombres de tablas/columnas en inglés; UI y textos de negocio en español.
 
+## Fase 1 — reglas de negocio (confirmadas)
+- **Cotización multi-opción**: `quotes` (cabecera + cliente) → N `quote_options` (el cliente compara/elige). Estados: draft→sent→approved/rejected/expired, validez 7 días config (`agencies.quote_validity_days`).
+- **Consecutivo + TRM + public_token**: se asignan/congelan al **enviar** (status→sent). Borrador sin número.
+- **Precios** (`@travelkit/core` `computePrice`): `venta_usd = costo_neto * (1 + Σmarkup% + fee_bancario%) + Σfijos`. Todos los % aplicables suman sobre el costo neto. Fee bancario = `agencies.bank_fee_percent` (default 3%, editable). Cliente ve **solo el precio final** en **COP** (TRM del envío), **redondeado a la centena**. `quote_options` guarda snapshot de net_cost/markup/fee/sale_usd/sale_cop para reportería (Fase 5).
+- **LiteAPI**: búsqueda por **hotel específico**, ocupación con edades de niños, contenido **en vivo** (snapshot de lo mostrado en `quote_options.provider_ref`/hotel_*).
+
 ## Estado actual
-Fase 0 COMPLETA y validada end-to-end (registro → login credenciales → onboarding `onboard_agency` → dashboard, con RLS activa). UI: Tailwind + shadcn (Button/Input/Label/Card), login/register/onboarding, shell con sidebar + selector de agencia. Seed: `pnpm db:make-superadmin <email>`.
-Pendiente Fase 1: motor de cotización (LiteAPI hoteles), markups (suma proveedor+agencia), TRM BanRep, consecutivos en cotizaciones, worker BullMQ. Falta también: OAuth Google real (credenciales), tests automatizados.
+Fase 0 COMPLETA y validada e2e. Fase 1 slice 1 HECHO y validado en Postgres real: migración 0003 (quotes/quote_options + bank_fee/validity + RLS por agente/admin/contable) y motor de precios `@travelkit/core` (tests pasan). Falta Fase 1: integración LiteAPI (cliente + búsqueda), TRM BanRep (fetch + snapshot al enviar), UI constructor de cotizaciones + acción "enviar" (asigna consecutivo/token/trm), worker BullMQ. Pendiente global: OAuth Google real, tests automatizados en CI.
