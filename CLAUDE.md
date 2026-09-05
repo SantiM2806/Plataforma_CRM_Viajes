@@ -25,4 +25,5 @@ SaaS **multi-tenant** CRM/CX para agencias de viajes. Ciclo: cotizar → gestion
 - Nombres de tablas/columnas en inglés; UI y textos de negocio en español.
 
 ## Estado actual
-Fase 0 en curso. Falta: completar shell de Next.js (UI onboarding/login), worker, tests.
+Fase 0 COMPLETA y validada end-to-end (registro → login credenciales → onboarding `onboard_agency` → dashboard, con RLS activa). UI: Tailwind + shadcn (Button/Input/Label/Card), login/register/onboarding, shell con sidebar + selector de agencia. Seed: `pnpm db:make-superadmin <email>`.
+Pendiente Fase 1: motor de cotización (LiteAPI hoteles), markups (suma proveedor+agencia), TRM BanRep, consecutivos en cotizaciones, worker BullMQ. Falta también: OAuth Google real (credenciales), tests automatizados.

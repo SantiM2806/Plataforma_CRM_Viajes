@@ -2,7 +2,7 @@ import type { NextAuthConfig } from 'next-auth';
 import Google from 'next-auth/providers/google';
 
 // Rutas públicas. '/p/' = propuestas web públicas para clientes.
-const PUBLIC_PREFIXES = ['/login', '/api/auth', '/p/'];
+const PUBLIC_PREFIXES = ['/login', '/register', '/api/auth', '/p/'];
 
 /**
  * Config base compartida entre el middleware (edge) y el runtime Node.

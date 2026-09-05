@@ -59,7 +59,7 @@ create table if not exists accounts (
   provider_account_id text not null,
   refresh_token       text,
   access_token        text,
-  expires_at          bigint,
+  expires_at          integer,
   token_type          text,
   scope               text,
   id_token            text,

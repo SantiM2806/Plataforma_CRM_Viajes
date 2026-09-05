@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import './globals.css';
 
 export const metadata = {
   title: 'Travelkit CRM',
@@ -8,7 +9,7 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es">
-      <body style={{ margin: 0, fontFamily: 'system-ui, sans-serif' }}>{children}</body>
+      <body className="min-h-screen antialiased">{children}</body>
     </html>
   );
 }

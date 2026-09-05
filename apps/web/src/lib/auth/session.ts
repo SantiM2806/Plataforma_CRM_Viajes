@@ -56,3 +56,23 @@ export function roleInAgency(ctx: SessionContext, agencyId: string): Role | null
   const m = ctx.memberships.find((x) => x.agency_id === agencyId);
   return m?.role ?? null;
 }
+
+export interface AgencyRef {
+  id: string;
+  name: string;
+  initials: string;
+}
+
+/** Agencias visibles para el usuario (bajo RLS: las suyas; super_admin: todas). */
+export async function getUserAgencies(userId: string): Promise<AgencyRef[]> {
+  return withUser(userId, (tx) =>
+    tx
+      .select({
+        id: schema.agencies.id,
+        name: schema.agencies.name,
+        initials: schema.agencies.initials,
+      })
+      .from(schema.agencies)
+      .orderBy(schema.agencies.name),
+  );
+}
