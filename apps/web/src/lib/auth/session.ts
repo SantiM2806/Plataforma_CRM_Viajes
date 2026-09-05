@@ -1,4 +1,5 @@
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { auth } from '@/auth';
+import { withUser, schema } from '@travelkit/db';
 
 export type Role = 'super_admin' | 'admin_agencia' | 'agente' | 'contable';
 
@@ -12,36 +13,35 @@ export interface SessionContext {
   email: string;
   memberships: Membership[];
   isPlatformAdmin: boolean; // super_admin (dueño del SaaS): ve todas las agencias
-  agencyIds: string[]; // agencias concretas a las que pertenece
+  agencyIds: string[];
 }
 
 /**
- * Contexto de sesión + tenancy. Lee memberships bajo RLS (el usuario solo ve
- * las suyas). Devuelve null si no hay sesión.
+ * Contexto de sesión + tenancy. Lee memberships bajo RLS vía withUser()
+ * (el usuario solo ve las suyas). Devuelve null si no hay sesión.
  */
 export async function getSessionContext(): Promise<SessionContext | null> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  const session = await auth();
+  const userId = session?.user?.id;
+  if (!userId) return null;
 
-  const { data } = await supabase.from('memberships').select('agency_id, role');
-  const memberships = (data ?? []) as Membership[];
+  const rows = await withUser(userId, (tx) =>
+    tx
+      .select({ agency_id: schema.memberships.agencyId, role: schema.memberships.role })
+      .from(schema.memberships),
+  );
+  const memberships = rows as Membership[];
 
   return {
-    userId: user.id,
-    email: user.email ?? '',
+    userId,
+    email: session.user?.email ?? '',
     memberships,
     isPlatformAdmin: memberships.some((m) => m.agency_id === null && m.role === 'super_admin'),
     agencyIds: memberships.filter((m) => m.agency_id).map((m) => m.agency_id as string),
   };
 }
 
-/**
- * Resuelve la agencia "activa" para un usuario multi-agencia.
- * @param requested id pedido (ej. desde cookie/selector). Se valida contra las membresías.
- */
+/** Resuelve la agencia "activa" para un usuario multi-agencia. */
 export function resolveActiveAgencyId(
   ctx: SessionContext,
   requested?: string | null,

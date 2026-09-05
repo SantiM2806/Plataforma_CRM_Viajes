@@ -18,22 +18,25 @@ Internet ──▶ Caddy (443, TLS auto)
                ├──▶ web     (Next.js standalone, :3000)
                └──▶ (webhooks) ──▶ web ──▶ Redis ──▶ worker (BullMQ)
 
-Supabase self-hosted  = su propio stack docker-compose (Postgres propio, Auth, Storage)
-Media/PDF             = DigitalOcean Spaces (S3) o Supabase Storage
+PostgreSQL   = contenedor propio (postgres:16) — auth (Auth.js) + datos + RLS
+Media/PDF    = DigitalOcean Spaces (S3-compatible)
 ```
 
-- **Arranque**: 1 Droplet (2 vCPU / 4 GB). App + Redis aquí; Supabase en su stack (mismo Droplet al inicio).
-- **Escala**: mover Supabase/Postgres a Droplet dedicado o Managed Postgres → worker en su propio Droplet → réplicas de `web` detrás de Caddy.
+- **Arranque**: 1 Droplet (2 vCPU / 4 GB). Postgres + Redis + web + Caddy en el mismo compose.
+- **Escala**: mover Postgres a Droplet dedicado o DO Managed Postgres → worker en su propio Droplet → réplicas de `web` detrás de Caddy.
 
 ## Puesta en marcha
 
 ```bash
 # en el Droplet
-cp ../.env.example .env         # completar credenciales
+cp ../.env.example .env          # completar credenciales
 docker compose -f deploy/docker-compose.yml up -d --build
+# aplicar migraciones (crea rol crm_app, esquema y RLS):
+DATABASE_URL="postgresql://postgres:PASS@localhost:5432/travelkit_crm" pnpm db:migrate
 ```
 
-> Supabase self-hosted se despliega aparte (su propio `docker-compose`). Este compose asume que la URL/keys de Supabase ya existen en `.env`.
+> Sin Supabase: PostgreSQL es un contenedor más. Las migraciones se corren con el
+> rol admin (`DATABASE_URL`); la app usa el rol `crm_app` (`DATABASE_APP_URL`) con RLS.
 
 ## CI/CD (resumen)
 `.github/workflows/deploy.yml`: en push a `main` → `docker build` de `apps/web` → push a registry → SSH al Droplet → `docker compose pull web && docker compose up -d web`. (Se añade cuando confirmes registry: GHCR o DO Container Registry.)

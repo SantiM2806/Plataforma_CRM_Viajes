@@ -1,6 +1,36 @@
-# Stack de la APP (web + worker + redis + caddy).
-# Supabase self-hosted corre en su propio docker-compose (Postgres/Auth/Storage aparte).
+# Stack completo de la app: postgres + redis + web (+ caddy) (+ worker en Fase 1).
 services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: travelkit_crm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432" # exponer solo si necesitas acceso externo; en prod, quítalo
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    expose:
+      - "3000"
+    depends_on:
+      - postgres
+      - redis
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -14,18 +44,6 @@ services:
     depends_on:
       - web
 
-  web:
-    build:
-      context: ..
-      dockerfile: deploy/web.Dockerfile
-    restart: unless-stopped
-    env_file:
-      - ../.env
-    expose:
-      - "3000"
-    depends_on:
-      - redis
-
   # worker: se activa en Fase 1 (cotización paralela, TRM BanRep, webhooks).
   # worker:
   #   build:
@@ -35,16 +53,11 @@ services:
   #   env_file:
   #     - ../.env
   #   depends_on:
+  #     - postgres
   #     - redis
 
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redis_data:/data
-
 volumes:
+  pg_data:
+  redis_data:
   caddy_data:
   caddy_config:
-  redis_data:

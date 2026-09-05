@@ -1,41 +1,61 @@
-# @travelkit/db — Esquema y migraciones
+# @travelkit/db — Esquema, migraciones y cliente
 
-Migraciones SQL numeradas para el Postgres de **tu** Supabase self-hosted.
+PostgreSQL puro (sin Supabase). Migraciones SQL hand-written (fuente de verdad del DDL) + esquema Drizzle para queries tipadas.
 
 ## Migraciones
 
 | Archivo | Contenido |
 |---|---|
-| `0001_foundation.sql` | Enums, `profiles`, `agencies`, `memberships`, helpers de autorización, `onboard_agency`, consecutivos, `markup_rules`, `exchange_rates`, `audit_log` |
-| `0002_rls.sql` | Políticas RLS + grants a roles `authenticated`/`anon` |
+| `0000_roles.sql` | Crea el rol de runtime `crm_app` (login, NO owner) |
+| `0001_foundation.sql` | Enums, tablas Auth.js (`users`/`accounts`/`sessions`/`verification_tokens`), `agencies`, `memberships`, helpers de autorización, `onboard_agency`, consecutivos, `markup_rules`, `exchange_rates`, `audit_log` |
+| `0002_rls.sql` | Políticas RLS (dominio) + grants a `crm_app` |
 
 ## Aplicar
 
 ```bash
-# desde la raíz del monorepo
-export DATABASE_URL="postgresql://crm:PASSWORD@HOST:5432/postgres"
+# DATABASE_URL = rol ADMIN/owner (crea roles, funciones, RLS)
+export DATABASE_URL="postgresql://postgres:PASSWORD@localhost:5432/travelkit_crm"
 pnpm db:migrate
 ```
 
-Registra cada archivo aplicado en la tabla `_migrations` (idempotente: no reaplica).
+Registra cada archivo aplicado en `_migrations` (idempotente).
 
-> **Alternativa**: si usas el CLI de Supabase, puedes copiar estos `.sql` a `supabase/migrations/` y correr `supabase db push`. El runner propio evita depender del CLI.
+> Cambia la contraseña de `crm_app` tras la primera migración:
+> `ALTER ROLE crm_app PASSWORD '...';` y ponla en `DATABASE_APP_URL`.
 
-## Notas de diseño
+## Dos conexiones
 
-- **Aislamiento por tenant**: las políticas RLS se apoyan en `memberships`. Las funciones helper (`is_member_of`, `has_agency_role`, …) son `SECURITY DEFINER` para no entrar en recursión al leer `memberships` desde una policy.
-- **Auto-registro**: el cliente NO inserta en `agencies` directamente; llama a la RPC `onboard_agency(name, initials, tax_id)` que crea la agencia y la membresía `admin_agencia` en una transacción.
-- **Consecutivos**: `select next_consecutivo('<agency_uuid>', 'COT');` → `COT-AVM-00001`. Atómico vía `INSERT … ON CONFLICT … RETURNING`.
-- **doc_sequences** tiene RLS activo **sin políticas**: es inaccesible al cliente y solo se toca vía `next_consecutivo` (definer).
-- **exchange_rates / audit_log**: los escribe el worker con `service_role` (bypassa RLS).
+| Var | Rol | Uso |
+|---|---|---|
+| `DATABASE_URL` | admin/owner (BYPASSRLS) | Migraciones. Las funciones `SECURITY DEFINER` corren como este owner → leen `memberships` sin recursión de RLS. |
+| `DATABASE_APP_URL` | `crm_app` (NO owner) | Runtime de la app → **RLS aplica**. |
 
-## Verificación rápida (psql)
+## Aislamiento por tenant (2 capas)
+
+1. **Capa de aplicación**: toda consulta de dominio pasa por `withUser(userId, tx => …)`, que abre una transacción y hace `set_config('app.user_id', userId, true)`.
+2. **RLS**: las policies usan `app_current_user()` (lee el GUC `app.user_id`). Si el código olvidara filtrar, la RLS igual bloquea filas de otras agencias.
+
+```ts
+import { withUser, schema } from '@travelkit/db';
+
+const rows = await withUser(userId, (tx) =>
+  tx.select().from(schema.memberships), // solo devuelve lo que la RLS permite
+);
+```
+
+El cliente `db` (sin contexto) es solo para el adaptador de Auth.js y jobs del worker.
+
+## Notas
+
+- **Consecutivos**: `select next_consecutivo('<agency_uuid>', 'COT');` → `COT-AVM-0001` (base36, atómico).
+- **Auto-registro**: el cliente NO inserta en `agencies`; llama a `onboard_agency(name, initials, tax_id)` (crea agencia + membresía `admin_agencia` para `app_current_user()`).
+- **doc_sequences**: RLS activo sin policies → inaccesible salvo vía `next_consecutivo` (definer).
+- `schema.ts` (Drizzle) refleja las migraciones; mantener en sync manualmente.
+
+## Sembrar el primer super_admin
 
 ```sql
--- como super_admin de plataforma, sembrar el primer usuario:
+-- tras registrarte por la UI (crea tu fila en users), toma tu id y:
 insert into memberships (user_id, agency_id, role)
-values ('<TU_AUTH_UID>', null, 'super_admin');
-
--- probar consecutivo:
-select next_consecutivo(id, 'COT') from agencies limit 1;
+values ('<TU_USER_UUID>', null, 'super_admin');
 ```

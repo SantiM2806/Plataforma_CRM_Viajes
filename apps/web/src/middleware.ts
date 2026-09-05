@@ -1,13 +1,12 @@
-import { type NextRequest } from 'next/server';
-import { updateSession } from '@/lib/supabase/middleware';
+import NextAuth from 'next-auth';
+import { authConfig } from './auth.config';
 
-export async function middleware(request: NextRequest) {
-  return updateSession(request);
-}
+// El middleware corre en el edge => usa authConfig (sin argon2). El callback
+// `authorized` de authConfig protege las rutas privadas.
+export const { auth: middleware } = NextAuth(authConfig);
 
 export const config = {
   matcher: [
-    // Todo excepto estáticos e imágenes.
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
