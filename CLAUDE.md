@@ -8,9 +8,9 @@ SaaS **multi-tenant** CRM/CX para agencias de viajes. Ciclo: cotizar → gestion
 ## Decisiones de arquitectura (confirmadas)
 - **Stack**: Next.js (App Router) + Tailwind + shadcn/ui; Supabase self-hosted (Auth + Postgres + RLS); BullMQ + Redis; monolito modular (motor de cotización aislado, extraíble).
 - **Multi-tenancy**: single-DB agrupada por `agency_id` + **RLS** como red de seguridad. El código SIEMPRE filtra por tenant; RLS es la segunda capa.
-- **Roles** viven en `memberships(user_id, agency_id, role)`. `agency_id = NULL` ⇒ alcance de plataforma (super_admin, contable global). Un usuario puede tener varias agencias.
+- **Roles** viven en `memberships(user_id, agency_id, role)`. `agency_id = NULL` ⇒ alcance de plataforma, **solo `super_admin`** (dueño del SaaS, ve todas las agencias). `admin_agencia`/`agente`/`contable` van siempre atados a una agencia; un contable que lleve varias agencias tiene una membresía por cada una. Un usuario puede tener varias agencias.
 - **Auth**: Supabase Auth con Google OAuth + email/password. **Auto-registro**: el usuario se registra y crea su agencia vía RPC `onboard_agency` (SECURITY DEFINER) que lo hace `admin_agencia`.
-- **Consecutivos**: `{DOC}-{INITIALS}-{n}` (ej. `COT-AVM-00001`). Secuencia **por agencia**, arranca en 1, atómica vía `next_consecutivo()`.
+- **Consecutivos**: `{DOC}-{INITIALS}-{base36}` (ej. `COT-AVM-0001`). Valor en **base36** (mayúsculas), secuencia **por agencia**, arranca en 1, atómica vía `next_consecutivo()`.
 - **Markups**: configurados por el `admin_agencia`. `percent` o `fixed`. Scopes: `agency_default`, `provider`, `product_type`, `product`. Precio final = suma de reglas aplicables.
 - **Moneda**: base USD, visualización COP. TRM oficial **BanRep**, congelada **al crear** la cotización (snapshot en la cotización).
 - **DIAN**: Fase 5 solo exporta **datos base** de facturación (sin integración con Proveedor Tecnológico).

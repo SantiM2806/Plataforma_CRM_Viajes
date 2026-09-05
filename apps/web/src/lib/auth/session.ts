@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 export type Role = 'super_admin' | 'admin_agencia' | 'agente' | 'contable';
 
 export interface Membership {
-  agency_id: string | null; // null = alcance de plataforma
+  agency_id: string | null; // null = alcance de plataforma (solo super_admin)
   role: Role;
 }
 
@@ -11,8 +11,7 @@ export interface SessionContext {
   userId: string;
   email: string;
   memberships: Membership[];
-  isPlatformAdmin: boolean;
-  isPlatformFinance: boolean;
+  isPlatformAdmin: boolean; // super_admin (dueño del SaaS): ve todas las agencias
   agencyIds: string[]; // agencias concretas a las que pertenece
 }
 
@@ -35,7 +34,6 @@ export async function getSessionContext(): Promise<SessionContext | null> {
     email: user.email ?? '',
     memberships,
     isPlatformAdmin: memberships.some((m) => m.agency_id === null && m.role === 'super_admin'),
-    isPlatformFinance: memberships.some((m) => m.agency_id === null && m.role === 'contable'),
     agencyIds: memberships.filter((m) => m.agency_id).map((m) => m.agency_id as string),
   };
 }

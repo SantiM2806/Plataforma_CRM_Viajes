@@ -73,11 +73,11 @@ create policy rates_select on exchange_rates for select
   using (auth.uid() is not null);
 
 -- ---------- audit_log ----------
--- Lectura por admins/contables de la agencia o plataforma; escritura vía service_role/definer.
+-- Lectura por super_admin, o admin_agencia/contable de la agencia; escritura vía service_role/definer.
 drop policy if exists audit_select on audit_log;
 create policy audit_select on audit_log for select
   using (
-    is_platform_admin() or is_platform_finance()
+    is_platform_admin()
     or (agency_id is not null and has_agency_role(agency_id, array['admin_agencia','contable']::app_role[]))
   );
 
@@ -97,7 +97,6 @@ grant select                          on audit_log      to authenticated;
 grant execute on function onboard_agency(text, text, text)      to authenticated;
 grant execute on function next_consecutivo(uuid, text, int)     to authenticated;
 grant execute on function is_platform_admin()                   to authenticated;
-grant execute on function is_platform_finance()                 to authenticated;
 grant execute on function is_member_of(uuid)                    to authenticated;
 grant execute on function has_agency_role(uuid, app_role[])     to authenticated;
 grant execute on function current_agency_ids()                  to authenticated;

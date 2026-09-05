@@ -80,7 +80,9 @@ create trigger trg_agencies_updated before update on agencies
   for each row execute function set_updated_at();
 
 -- ---------- memberships (user <-> agency, rol por membresía) ----------
--- agency_id NULL = alcance de PLATAFORMA (super_admin, o contable global)
+-- agency_id NULL = alcance de PLATAFORMA (solo super_admin = dueño del SaaS).
+-- admin_agencia / agente / contable van SIEMPRE atados a una agencia.
+-- Un contable que lleve varias agencias tiene una membresía por cada una.
 create table if not exists memberships (
   id         uuid primary key default gen_random_uuid(),
   user_id    uuid not null references profiles(id) on delete cascade,
@@ -89,8 +91,7 @@ create table if not exists memberships (
   created_at timestamptz not null default now(),
   constraint memberships_scope_check check (
     (role = 'super_admin' and agency_id is null) or
-    (role in ('admin_agencia','agente') and agency_id is not null) or
-    (role = 'contable')  -- contable: agencia (agency_id set) o global (agency_id null)
+    (role in ('admin_agencia','agente','contable') and agency_id is not null)
   ),
   constraint memberships_unique unique nulls not distinct (user_id, agency_id, role)
 );
@@ -106,17 +107,9 @@ returns boolean language sql stable security definer set search_path = public as
   );
 $$;
 
-create or replace function is_platform_finance()
-returns boolean language sql stable security definer set search_path = public as $$
-  select exists (
-    select 1 from memberships m
-    where m.user_id = auth.uid() and m.agency_id is null and m.role = 'contable'
-  );
-$$;
-
 create or replace function is_member_of(p_agency uuid)
 returns boolean language sql stable security definer set search_path = public as $$
-  select is_platform_admin() or is_platform_finance() or exists (
+  select is_platform_admin() or exists (
     select 1 from memberships m
     where m.user_id = auth.uid() and m.agency_id = p_agency
   );
@@ -170,9 +163,26 @@ create table if not exists doc_sequences (
   primary key (agency_id, doc_type)
 );
 
+-- Codifica un entero en base36 (0-9 A-Z), mayúsculas.
+create or replace function to_base36(n bigint)
+returns text language plpgsql immutable as $$
+declare
+  digits constant text := '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  out text := '';
+  v bigint := n;
+begin
+  if v < 0 then raise exception 'to_base36: valor negativo no soportado'; end if;
+  if v = 0 then return '0'; end if;
+  while v > 0 loop
+    out := substr(digits, (v % 36)::int + 1, 1) || out;
+    v := v / 36;   -- división entera
+  end loop;
+  return out;
+end $$;
+
 -- Devuelve el siguiente consecutivo formateado, de forma atómica.
--- Formato: {DOC}-{INITIALS}-{valor con padding}   ej: COT-AVM-00001
-create or replace function next_consecutivo(p_agency uuid, p_doc_type text default 'COT', p_pad int default 5)
+-- Formato: {DOC}-{INITIALS}-{valor en base36 con padding}   ej: COT-AVM-0001, COT-AVM-002X
+create or replace function next_consecutivo(p_agency uuid, p_doc_type text default 'COT', p_pad int default 4)
 returns text language plpgsql security definer set search_path = public as $$
 declare
   v_val bigint;
@@ -189,7 +199,7 @@ begin
     do update set last_value = doc_sequences.last_value + 1
   returning last_value into v_val;
 
-  return upper(p_doc_type) || '-' || v_initials || '-' || lpad(v_val::text, p_pad, '0');
+  return upper(p_doc_type) || '-' || v_initials || '-' || lpad(to_base36(v_val), p_pad, '0');
 end $$;
 
 -- ---------- markup_rules (config por agencia; % o fijo; por proveedor/producto) ----------
