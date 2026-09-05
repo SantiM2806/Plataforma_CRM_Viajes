@@ -1,0 +1,50 @@
+# Stack de la APP (web + worker + redis + caddy).
+# Supabase self-hosted corre en su propio docker-compose (Postgres/Auth/Storage aparte).
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    expose:
+      - "3000"
+    depends_on:
+      - redis
+
+  # worker: se activa en Fase 1 (cotización paralela, TRM BanRep, webhooks).
+  # worker:
+  #   build:
+  #     context: ..
+  #     dockerfile: deploy/worker.Dockerfile
+  #   restart: unless-stopped
+  #   env_file:
+  #     - ../.env
+  #   depends_on:
+  #     - redis
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+volumes:
+  caddy_data:
+  caddy_config:
+  redis_data:

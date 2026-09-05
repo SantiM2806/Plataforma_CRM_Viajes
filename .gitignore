@@ -1,0 +1,30 @@
+node_modules/
+.pnpm-store/
+dist/
+.next/
+out/
+build/
+coverage/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# os / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# turbo
+.turbo/
+
+# supabase local
+supabase/.branches
+supabase/.temp

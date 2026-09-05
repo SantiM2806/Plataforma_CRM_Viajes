@@ -1,0 +1,5 @@
+# Reemplaza el dominio por el tuyo. Caddy gestiona TLS (Let's Encrypt) solo.
+crm.tudominio.com {
+	encode gzip zstd
+	reverse_proxy web:3000
+}
