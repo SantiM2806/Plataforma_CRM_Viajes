@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { withUser, schema, type Db } from '@travelkit/db';
 import { getActiveContext } from '@/lib/auth/session';
 
@@ -88,6 +88,43 @@ export async function deleteMarkupRuleAction(ruleId: string): Promise<void> {
     tx.delete(schema.markupRules).where(eq(schema.markupRules.id, ruleId)),
   );
   revalidatePath('/settings');
+}
+
+export async function saveChannelAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    const { userId, agencyId } = await requireAdmin();
+    const channel = String(formData.get('channel')) as 'telegram' | 'whatsapp';
+    const active = formData.get('active') === 'on';
+    let config: Record<string, string> = {};
+    if (channel === 'telegram') {
+      config = { botToken: String(formData.get('botToken') ?? '').trim() };
+    } else if (channel === 'whatsapp') {
+      config = {
+        phoneNumberId: String(formData.get('phoneNumberId') ?? '').trim(),
+        accessToken: String(formData.get('accessToken') ?? '').trim(),
+        verifyToken: String(formData.get('verifyToken') ?? '').trim(),
+      };
+    } else {
+      return { error: 'Canal inválido.' };
+    }
+
+    await withUser(userId, (tx: Db) =>
+      tx
+        .insert(schema.channelIntegrations)
+        .values({ agencyId, channel, config, active })
+        .onConflictDoUpdate({
+          target: [schema.channelIntegrations.agencyId, schema.channelIntegrations.channel],
+          set: { config, active, updatedAt: sql`now()` },
+        }),
+    );
+    revalidatePath('/settings');
+    return { ok: true };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Error al guardar el canal.' };
+  }
 }
 
 export async function toggleMarkupRuleAction(ruleId: string, active: boolean): Promise<void> {

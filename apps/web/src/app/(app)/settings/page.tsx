@@ -4,6 +4,7 @@ import { withUser, schema } from '@travelkit/db';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PricingForm } from './pricing-form';
 import { RulesManager } from './rules-manager';
+import { ChannelsManager } from './channels';
 
 export default async function SettingsPage() {
   const { userId, agencyId, isAdmin } = await getActiveContext();
@@ -40,6 +41,16 @@ export default async function SettingsPage() {
       .orderBy(asc(schema.markupRules.scope), asc(schema.markupRules.priority)),
   );
 
+  const integrations = await withUser(userId, (tx) =>
+    tx
+      .select()
+      .from(schema.channelIntegrations)
+      .where(eq(schema.channelIntegrations.agencyId, agencyId)),
+  );
+  const tg = integrations.find((i) => i.channel === 'telegram');
+  const wa = integrations.find((i) => i.channel === 'whatsapp');
+  const baseUrl = process.env.APP_BASE_URL ?? process.env.AUTH_URL ?? 'http://localhost:3000';
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
@@ -63,6 +74,19 @@ export default async function SettingsPage() {
           active: r.active,
         }))}
       />
+
+      <div>
+        <h2 className="mb-1 text-lg font-semibold tracking-tight">Canales de mensajería</h2>
+        <p className="mb-3 text-sm text-muted-foreground">
+          Conecta Telegram (MVP) o WhatsApp Cloud API para el Inbox.
+        </p>
+        <ChannelsManager
+          agencyId={agencyId}
+          baseUrl={baseUrl}
+          telegram={tg ? { active: tg.active, config: tg.config as Record<string, string> } : null}
+          whatsapp={wa ? { active: wa.active, config: wa.config as Record<string, string> } : null}
+        />
+      </div>
     </div>
   );
 }

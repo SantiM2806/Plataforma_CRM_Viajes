@@ -21,6 +21,10 @@ export const markupScope = pgEnum('markup_scope', ['agency_default', 'provider',
 export const markupCalc = pgEnum('markup_calc', ['percent', 'fixed']);
 export const quoteStatus = pgEnum('quote_status', ['draft', 'sent', 'approved', 'rejected', 'expired']);
 export const reservationStatus = pgEnum('reservation_status', ['pending', 'confirmed', 'cancelled', 'completed']);
+export const channelKind = pgEnum('channel_kind', ['telegram', 'whatsapp']);
+export const messageDirection = pgEnum('message_direction', ['inbound', 'outbound']);
+export const messageKind = pgEnum('message_kind', ['text', 'quote', 'system']);
+export const conversationStatus = pgEnum('conversation_status', ['open', 'closed']);
 
 // ---------- Auth.js ----------
 export const users = pgTable('users', {
@@ -216,6 +220,53 @@ export const reservations = pgTable('reservations', {
   notes: text('notes'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const channelIntegrations = pgTable(
+  'channel_integrations',
+  {
+    agencyId: uuid('agency_id')
+      .notNull()
+      .references(() => agencies.id, { onDelete: 'cascade' }),
+    channel: channelKind('channel').notNull(),
+    config: jsonb('config').notNull().default({}),
+    active: boolean('active').notNull().default(true),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.agencyId, t.channel] }) }),
+);
+
+export const conversations = pgTable('conversations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  agencyId: uuid('agency_id')
+    .notNull()
+    .references(() => agencies.id, { onDelete: 'cascade' }),
+  channel: channelKind('channel').notNull(),
+  externalId: text('external_id').notNull(),
+  contactName: text('contact_name'),
+  contactHandle: text('contact_handle'),
+  assignedAgentId: uuid('assigned_agent_id').references(() => users.id, { onDelete: 'set null' }),
+  status: conversationStatus('status').notNull().default('open'),
+  lastMessageAt: timestamp('last_message_at', { withTimezone: true }),
+  lastMessagePreview: text('last_message_preview'),
+  unread: boolean('unread').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const messages = pgTable('messages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  conversationId: uuid('conversation_id')
+    .notNull()
+    .references(() => conversations.id, { onDelete: 'cascade' }),
+  direction: messageDirection('direction').notNull(),
+  kind: messageKind('kind').notNull().default('text'),
+  body: text('body'),
+  quoteId: uuid('quote_id').references(() => quotes.id, { onDelete: 'set null' }),
+  externalMessageId: text('external_message_id'),
+  senderUserId: uuid('sender_user_id').references(() => users.id, { onDelete: 'set null' }),
+  delivered: boolean('delivered').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const auditLog = pgTable('audit_log', {
