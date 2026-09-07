@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { db } from '@travelkit/db';
+import { db } from '@crm/db';
 
 export const runtime = 'nodejs';
 

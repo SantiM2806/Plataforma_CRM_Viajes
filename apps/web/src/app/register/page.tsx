@@ -16,7 +16,7 @@ export default function RegisterPage() {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-xl">Crear cuenta</CardTitle>
-          <CardDescription>Registra tu agencia en Travelkit CRM.</CardDescription>
+          <CardDescription>Registra tu agencia en CRM de Viajes.</CardDescription>
         </CardHeader>
         <CardContent>
           <form action={action} className="grid gap-4">

@@ -1,4 +1,4 @@
-# Travelkit CRM/CX — Plataforma SaaS para Agencias de Viajes
+# CRM de Viajes — Plataforma SaaS para Agencias de Viajes
 
 Plataforma **multi-tenant B2B** que cubre el ciclo end-to-end: búsqueda/cotización de servicios → gestión de cotizaciones (PDF + propuesta web pública) → CRM/reservas → Inbox omnicanal (Telegram → WhatsApp Cloud API) → reportería y conciliación contable (base para facturación DIAN, Colombia).
 
@@ -58,7 +58,7 @@ Un usuario puede pertenecer a **varias agencias** → el rol vive en `membership
 pnpm install
 cp .env.example .env            # DATABASE_URL (admin), DATABASE_APP_URL (crm_app), AUTH_SECRET, Google
 pnpm db:migrate                 # crea rol crm_app + esquema + RLS (usa DATABASE_URL admin)
-pnpm --filter @travelkit/web dev
+pnpm --filter @crm/web dev
 ```
 
 Necesitas un Postgres 16 corriendo (local o el del `deploy/docker-compose.yml`). Genera `AUTH_SECRET` con `openssl rand -base64 32`.

@@ -1,7 +1,7 @@
 import { createElement } from 'react';
 import { asc, eq } from 'drizzle-orm';
 import { renderToBuffer } from '@react-pdf/renderer';
-import { withUser, schema } from '@travelkit/db';
+import { withUser, schema } from '@crm/db';
 import { getSessionContext } from '@/lib/auth/session';
 import { QuotePdf, type QuotePdfData } from '@/lib/pdf/quote-pdf';
 

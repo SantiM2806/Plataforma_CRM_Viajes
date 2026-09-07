@@ -1,7 +1,7 @@
 'use server';
 
 import { sql } from 'drizzle-orm';
-import { db } from '@travelkit/db';
+import { db } from '@crm/db';
 
 const ZERO_UUID = '00000000-0000-0000-0000-000000000000';
 

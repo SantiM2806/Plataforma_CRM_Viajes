@@ -1,4 +1,4 @@
-<title>Travelkit CRM</title>
+<title>CRM de Viajes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link
@@ -13,9 +13,10 @@
     --surface: #ffffff;
     --surface-2: #f3f0f8;
     --border: #eae6f1;
-    --primary: #6d28d9;
-    --primary-ink: #ffffff;
-    --primary-weak: #f2ecfd;
+    --primary: #bbcf26;
+    --primary-ink: #1c220a;
+    --primary-weak: #eef4d0;
+    --primary-text: #5c6b10;
     --accent: #e0850a;
     --good: #059669;
     --ink: #141019;
@@ -38,9 +39,10 @@
       --surface: #191322;
       --surface-2: #201830;
       --border: #2b2338;
-      --primary: #b39aff;
-      --primary-ink: #1a1030;
-      --primary-weak: #241a37;
+      --primary: #c6dd3a;
+      --primary-ink: #17200a;
+      --primary-weak: #2a3210;
+      --primary-text: #cbe23f;
       --accent: #fbbf24;
       --good: #34d399;
       --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 18px 40px -16px rgba(0, 0, 0, 0.6);
@@ -53,9 +55,10 @@
     --surface: #191322;
     --surface-2: #201830;
     --border: #2b2338;
-    --primary: #b39aff;
-    --primary-ink: #1a1030;
-    --primary-weak: #241a37;
+    --primary: #c6dd3a;
+    --primary-ink: #17200a;
+    --primary-weak: #2a3210;
+    --primary-text: #cbe23f;
     --accent: #fbbf24;
     --good: #34d399;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 18px 40px -16px rgba(0, 0, 0, 0.6);
@@ -97,7 +100,7 @@
     font-weight: 600;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--primary);
+    color: var(--primary-text);
   }
   a {
     color: inherit;
@@ -234,7 +237,7 @@
     background: var(--primary);
     display: grid;
     place-items: center;
-    color: #fff;
+    color: var(--primary-ink);
   }
   .mock .cons {
     font-family: var(--mono);
@@ -351,7 +354,7 @@
     border-radius: 50%;
     background: var(--surface);
     border: 2px solid var(--primary);
-    color: var(--primary);
+    color: var(--primary-text);
     display: grid;
     place-items: center;
     font-family: var(--mono);
@@ -386,7 +389,7 @@
     height: 42px;
     border-radius: 11px;
     background: var(--primary-weak);
-    color: var(--primary);
+    color: var(--primary-text);
     display: grid;
     place-items: center;
     margin-bottom: 16px;
@@ -404,7 +407,7 @@
     margin-top: 14px;
     font-family: var(--mono);
     font-size: 11.5px;
-    color: var(--primary);
+    color: var(--primary-text);
     background: var(--primary-weak);
     padding: 4px 10px;
     border-radius: 999px;
@@ -444,7 +447,7 @@
     font-weight: 600;
   }
   .cmp .after b {
-    color: var(--primary);
+    color: var(--primary-text);
     font-weight: 700;
   }
 
@@ -495,7 +498,7 @@
   }
   .badge.next {
     background: var(--primary-weak);
-    color: var(--primary);
+    color: var(--primary-text);
   }
   ul.list {
     list-style: none;
@@ -513,7 +516,7 @@
   ul.list li svg {
     flex: none;
     margin-top: 3px;
-    color: var(--primary);
+    color: var(--primary-text);
   }
   .cols2 .next li svg {
     color: var(--accent);
@@ -598,7 +601,7 @@
   <div class="wrap">
     <div class="brand"><span class="mark" aria-hidden="true">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2Z"/></svg>
-    </span>Travelkit CRM</div>
+    </span>CRM de Viajes</div>
     <button class="toggle" id="themeBtn" type="button">Tema</button>
   </div>
 </header>
@@ -720,7 +723,7 @@
     </div>
     <table class="cmp">
       <thead>
-        <tr><th style="width:44%">Hoy</th><th>Con Travelkit</th></tr>
+        <tr><th style="width:44%">Hoy</th><th>Con CRM de Viajes</th></tr>
       </thead>
       <tbody>
         <tr><td class="before">Precio calculado a mano, con errores</td><td class="after">Precio <b>automático</b> con la TRM del día</td></tr>
@@ -788,12 +791,12 @@
     <p>Una demo de 15 minutos recorre el ciclo completo: cotizar Cartagena, enviar la propuesta, aprobarla como cliente y ver la utilidad conciliada.</p>
     <div class="chips">
       <span class="chip"><span class="dot"></span>Demo disponible</span>
-      <span class="chip">Travelkit CRM</span>
+      <span class="chip">CRM de Viajes</span>
     </div>
   </div>
 </section>
 
-<footer class="foot"><div class="wrap">Travelkit CRM · Plataforma CRM/CX para agencias de viajes</div></footer>
+<footer class="foot"><div class="wrap">CRM de Viajes · Plataforma CRM/CX para agencias de viajes</div></footer>
 
 <script>
   (function () {

@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { sql } from 'drizzle-orm';
-import { withUser, schema, type Db } from '@travelkit/db';
+import { withUser, schema, type Db } from '@crm/db';
 import { getSessionContext, getUserAgencies } from '@/lib/auth/session';
 import { loadAgencyPricing, priceOption } from '@/lib/pricing';
 import { getTrm } from '@/lib/trm';

@@ -1,6 +1,6 @@
 import 'server-only';
 import { and, between, desc, eq, inArray } from 'drizzle-orm';
-import { withUser, schema, type Db } from '@travelkit/db';
+import { withUser, schema, type Db } from '@crm/db';
 
 export interface ReportRow {
   consecutivo: string | null;

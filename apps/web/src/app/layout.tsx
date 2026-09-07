@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import './globals.css';
 
 export const metadata = {
-  title: 'Travelkit CRM',
+  title: 'CRM de Viajes',
   description: 'CRM/CX para agencias de viajes',
 };
 

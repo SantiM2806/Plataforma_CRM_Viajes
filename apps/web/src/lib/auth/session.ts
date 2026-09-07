@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { withUser, schema } from '@travelkit/db';
+import { withUser, schema } from '@crm/db';
 
 export type Role = 'super_admin' | 'admin_agencia' | 'agente' | 'contable';
 

@@ -1,6 +1,6 @@
 import { asc, eq } from 'drizzle-orm';
 import { getActiveContext } from '@/lib/auth/session';
-import { withUser, schema } from '@travelkit/db';
+import { withUser, schema } from '@crm/db';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PricingForm } from './pricing-form';
 import { RulesManager } from './rules-manager';

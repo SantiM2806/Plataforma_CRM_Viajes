@@ -1,7 +1,7 @@
 'use server';
 
 import { sql } from 'drizzle-orm';
-import { withUser } from '@travelkit/db';
+import { withUser } from '@crm/db';
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 

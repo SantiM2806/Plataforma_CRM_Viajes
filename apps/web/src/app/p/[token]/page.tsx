@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { sql } from 'drizzle-orm';
-import { db } from '@travelkit/db';
+import { db } from '@crm/db';
 import { Proposal, type ProposalData } from './proposal';
 
 export const dynamic = 'force-dynamic';

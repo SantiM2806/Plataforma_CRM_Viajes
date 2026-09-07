@@ -1,7 +1,7 @@
 import 'server-only';
 import { and, eq } from 'drizzle-orm';
-import { withUser, schema, type Db } from '@travelkit/db';
-import { computePrice, type MarkupRule, type PriceContext } from '@travelkit/core';
+import { withUser, schema, type Db } from '@crm/db';
+import { computePrice, type MarkupRule, type PriceContext } from '@crm/core';
 
 export interface AgencyPricing {
   bankFeePercent: number;

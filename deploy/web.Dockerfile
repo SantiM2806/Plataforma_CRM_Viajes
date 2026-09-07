@@ -7,13 +7,13 @@ WORKDIR /app
 FROM base AS deps
 COPY pnpm-workspace.yaml package.json ./
 COPY apps/web/package.json apps/web/
-RUN pnpm install --filter @travelkit/web... --frozen-lockfile || pnpm install --filter @travelkit/web...
+RUN pnpm install --filter @crm/web... --frozen-lockfile || pnpm install --filter @crm/web...
 
 # --- build ---
 FROM base AS build
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN pnpm --filter @travelkit/web build
+RUN pnpm --filter @crm/web build
 
 # --- runner ---
 FROM base AS runner

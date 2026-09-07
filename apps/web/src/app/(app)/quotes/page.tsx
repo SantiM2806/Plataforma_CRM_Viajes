@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { desc } from 'drizzle-orm';
 import { getAppContext } from '@/lib/auth/session';
-import { withUser, schema } from '@travelkit/db';
+import { withUser, schema } from '@crm/db';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';

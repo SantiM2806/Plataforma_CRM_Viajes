@@ -4,7 +4,7 @@ import Credentials from 'next-auth/providers/credentials';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import { verify } from '@node-rs/argon2';
 import { eq } from 'drizzle-orm';
-import { db, schema } from '@travelkit/db';
+import { db, schema } from '@crm/db';
 import { authConfig } from './auth.config';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({

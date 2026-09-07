@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { and, eq, sql } from 'drizzle-orm';
-import { withUser, schema, type Db } from '@travelkit/db';
+import { withUser, schema, type Db } from '@crm/db';
 import { getActiveContext } from '@/lib/auth/session';
 
 export type ActionState = { error?: string; ok?: boolean };

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { and, desc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
-import { withUser, schema, type Db } from '@travelkit/db';
+import { withUser, schema, type Db } from '@crm/db';
 import { getSessionContext } from '@/lib/auth/session';
 import { sendViaChannel, type Channel, type ChannelConfig } from '@/lib/channels';
 

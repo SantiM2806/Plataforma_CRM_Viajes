@@ -6,7 +6,7 @@ WORKDIR /app
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY apps/worker/package.json apps/worker/
 COPY packages/db/package.json packages/db/
-RUN pnpm install --filter @travelkit/worker... --frozen-lockfile || pnpm install --filter @travelkit/worker...
+RUN pnpm install --filter @crm/worker... --frozen-lockfile || pnpm install --filter @crm/worker...
 
 COPY . .
-CMD ["pnpm", "--filter", "@travelkit/worker", "start"]
+CMD ["pnpm", "--filter", "@crm/worker", "start"]

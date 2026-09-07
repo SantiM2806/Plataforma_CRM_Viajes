@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { db } from '@travelkit/db';
+import { db } from '@crm/db';
 
 const SOURCE_URL = process.env.TRM_SOURCE_URL ?? 'https://www.datos.gov.co/resource/32sa-8pi3.json';
 

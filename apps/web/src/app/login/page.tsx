@@ -29,7 +29,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-xl">Iniciar sesión</CardTitle>
-          <CardDescription>Accede a tu panel de Travelkit CRM.</CardDescription>
+          <CardDescription>Accede a tu panel de CRM de Viajes.</CardDescription>
         </CardHeader>
         <CardContent>
           <Button

@@ -23,7 +23,7 @@ export function AppShell({
           <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <Plane className="h-4 w-4" />
           </span>
-          <span className="font-semibold tracking-tight">Travelkit CRM</span>
+          <span className="font-semibold tracking-tight">CRM de Viajes</span>
         </div>
         <SidebarNav />
       </aside>

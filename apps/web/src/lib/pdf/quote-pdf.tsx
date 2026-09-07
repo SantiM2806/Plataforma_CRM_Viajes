@@ -38,7 +38,8 @@ function usd(n: number | null): string {
   return 'USD ' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-const PURPLE = '#6d28d9';
+const BRAND = '#BBCF26';
+const BRAND_DARK = '#556310';
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, color: '#1f2430', fontFamily: 'Helvetica' },
   header: {
@@ -50,7 +51,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     marginBottom: 18,
   },
-  agency: { fontSize: 16, fontFamily: 'Helvetica-Bold', color: PURPLE },
+  agency: { fontSize: 16, fontFamily: 'Helvetica-Bold', color: BRAND_DARK },
   right: { textAlign: 'right' },
   consecutivo: { fontSize: 12, fontFamily: 'Helvetica-Bold' },
   muted: { color: '#6b7280' },
@@ -66,13 +67,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  optionSelected: { borderColor: PURPLE, borderWidth: 1.5, backgroundColor: '#faf7ff' },
+  optionSelected: { borderColor: BRAND, borderWidth: 1.5, backgroundColor: '#f7fadf' },
   hotel: { fontSize: 12, fontFamily: 'Helvetica-Bold', marginBottom: 3 },
   detail: { color: '#6b7280', marginBottom: 1 },
   priceBox: { alignItems: 'flex-end', justifyContent: 'center', minWidth: 120 },
   price: { fontSize: 13, fontFamily: 'Helvetica-Bold' },
   priceUsd: { fontSize: 8, color: '#6b7280', marginTop: 2 },
-  badge: { fontSize: 7, color: PURPLE, fontFamily: 'Helvetica-Bold', marginBottom: 4 },
+  badge: { fontSize: 7, color: BRAND_DARK, fontFamily: 'Helvetica-Bold', marginBottom: 4 },
   footer: {
     marginTop: 'auto',
     paddingTop: 12,

@@ -11,7 +11,7 @@ const nextConfig = {
   // Raíz del monorepo (evita que Next infiera un lockfile ajeno como raíz).
   outputFileTracingRoot: join(here, '../../'),
   // Compila los paquetes workspace (TS) del monorepo.
-  transpilePackages: ['@travelkit/db', '@travelkit/core'],
+  transpilePackages: ['@crm/db', '@crm/core'],
   // Mantiene fuera del bundle deps nativas / de Node (se cargan en runtime).
   serverExternalPackages: ['pg', '@node-rs/argon2', '@react-pdf/renderer'],
 };

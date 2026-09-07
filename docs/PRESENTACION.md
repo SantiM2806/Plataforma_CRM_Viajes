@@ -1,4 +1,4 @@
-# Travelkit CRM/CX — Plataforma para Agencias de Viajes
+# CRM de Viajes — Plataforma para Agencias de Viajes
 
 **Todo el ciclo comercial de tu agencia en una sola plataforma:** cotizar, enviar propuestas, cerrar la venta, gestionar la reserva, atender por chat y conciliar la utilidad.
 
@@ -12,7 +12,7 @@ Hoy una agencia de viajes trabaja repartida entre hojas de cálculo, correos, PD
 
 ## La solución
 
-Travelkit CRM unifica el ciclo completo en un flujo guiado y con precios automáticos:
+CRM de Viajes unifica el ciclo completo en un flujo guiado y con precios automáticos:
 
 **Cotizar → Enviar propuesta web → El cliente aprueba → Reserva → Chat → Conciliación**
 
@@ -54,7 +54,7 @@ Travelkit CRM unifica el ciclo completo en un flujo guiado y con precios automá
 
 ## Por qué importa
 
-| Antes | Con Travelkit |
+| Antes | Con CRM de Viajes |
 |---|---|
 | Precio calculado a mano, con errores | Precio automático con TRM del día |
 | PDF armado manualmente | PDF y **propuesta web** al instante |
@@ -86,4 +86,4 @@ Autenticación y multi-tenant · Cotizador + precios + TRM + PDF · Propuesta p�
 
 ---
 
-*Travelkit CRM — del interés del cliente a la venta conciliada, sin salir de la plataforma.*
+*CRM de Viajes — del interés del cliente a la venta conciliada, sin salir de la plataforma.*

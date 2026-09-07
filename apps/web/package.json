@@ -1,5 +1,5 @@
 {
-  "name": "@travelkit/web",
+  "name": "@crm/web",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -13,8 +13,8 @@
     "@node-rs/argon2": "^2.0.2",
     "@radix-ui/react-slot": "^1.1.0",
     "@react-pdf/renderer": "^4.1.6",
-    "@travelkit/core": "workspace:*",
-    "@travelkit/db": "workspace:*",
+    "@crm/core": "workspace:*",
+    "@crm/db": "workspace:*",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.36.4",

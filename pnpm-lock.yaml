@@ -26,10 +26,10 @@ importers:
       '@react-pdf/renderer':
         specifier: ^4.1.6
         version: 4.9.0(react@19.2.8)
-      '@travelkit/core':
+      '@crm/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@travelkit/db':
+      '@crm/db':
         specifier: workspace:*
         version: link:../../packages/db
       class-variance-authority:
@@ -93,7 +93,7 @@ importers:
 
   apps/worker:
     dependencies:
-      '@travelkit/db':
+      '@crm/db':
         specifier: workspace:*
         version: link:../../packages/db
       bullmq:

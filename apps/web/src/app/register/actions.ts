@@ -2,7 +2,7 @@
 
 import { hash } from '@node-rs/argon2';
 import { eq } from 'drizzle-orm';
-import { db, schema } from '@travelkit/db';
+import { db, schema } from '@crm/db';
 import { signIn } from '@/auth';
 
 export type RegisterState = { error?: string };

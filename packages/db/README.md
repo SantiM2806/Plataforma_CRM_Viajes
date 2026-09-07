@@ -1,4 +1,4 @@
-# @travelkit/db — Esquema, migraciones y cliente
+# @crm/db — Esquema, migraciones y cliente
 
 PostgreSQL puro (sin Supabase). Migraciones SQL hand-written (fuente de verdad del DDL) + esquema Drizzle para queries tipadas.
 
@@ -36,7 +36,7 @@ Registra cada archivo aplicado en `_migrations` (idempotente).
 2. **RLS**: las policies usan `app_current_user()` (lee el GUC `app.user_id`). Si el código olvidara filtrar, la RLS igual bloquea filas de otras agencias.
 
 ```ts
-import { withUser, schema } from '@travelkit/db';
+import { withUser, schema } from '@crm/db';
 
 const rows = await withUser(userId, (tx) =>
   tx.select().from(schema.memberships), // solo devuelve lo que la RLS permite

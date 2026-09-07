@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { asc, eq } from 'drizzle-orm';
 import { Download } from 'lucide-react';
 import { getAppContext } from '@/lib/auth/session';
-import { withUser, schema } from '@travelkit/db';
+import { withUser, schema } from '@crm/db';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
