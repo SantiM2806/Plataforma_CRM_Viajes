@@ -1,7 +1,10 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { asc, eq } from 'drizzle-orm';
+import { Download } from 'lucide-react';
 import { getAppContext } from '@/lib/auth/session';
 import { withUser, schema } from '@travelkit/db';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { SendButton } from './send-button';
@@ -48,7 +51,14 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
           </div>
           {q.title && <p className="text-muted-foreground">{q.title}</p>}
         </div>
-        {q.status === 'draft' && <SendButton quoteId={q.id} />}
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline">
+            <a href={`/quotes/${q.id}/pdf`} target="_blank">
+              <Download className="h-4 w-4" /> PDF
+            </a>
+          </Button>
+          {q.status === 'draft' && <SendButton quoteId={q.id} />}
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

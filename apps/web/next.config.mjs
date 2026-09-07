@@ -13,7 +13,7 @@ const nextConfig = {
   // Compila los paquetes workspace (TS) del monorepo.
   transpilePackages: ['@travelkit/db', '@travelkit/core'],
   // Mantiene fuera del bundle deps nativas / de Node (se cargan en runtime).
-  serverExternalPackages: ['pg', '@node-rs/argon2'],
+  serverExternalPackages: ['pg', '@node-rs/argon2', '@react-pdf/renderer'],
 };
 
 export default nextConfig;
