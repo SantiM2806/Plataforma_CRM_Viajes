@@ -25,7 +25,7 @@ const NAV: NavItem[] = [
   { label: 'Cotizaciones', icon: FileText, href: '/quotes' },
   { label: 'Reservas', icon: CalendarCheck, href: '/reservations' },
   { label: 'Inbox', icon: MessagesSquare, href: '/inbox' },
-  { label: 'Reportes', icon: BarChart3, soon: true },
+  { label: 'Reportes', icon: BarChart3, href: '/reports' },
   { label: 'Configuración', icon: Settings, href: '/settings' },
 ];
 

@@ -37,6 +37,7 @@ export function QuoteBuilder() {
   const [clientName, setClientName] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [clientPhone, setClientPhone] = useState('');
+  const [clientTaxId, setClientTaxId] = useState('');
   const [title, setTitle] = useState('');
 
   // Búsqueda de hotel
@@ -143,6 +144,7 @@ export function QuoteBuilder() {
             clientName,
             clientEmail: clientEmail || undefined,
             clientPhone: clientPhone || undefined,
+            clientTaxId: clientTaxId || undefined,
             options: added.map(({ saleUsd, saleCop, roomName, ...rest }) => rest),
           },
           { send },
@@ -179,6 +181,10 @@ export function QuoteBuilder() {
           <div className="grid gap-1.5">
             <Label htmlFor="cp">Teléfono / WhatsApp</Label>
             <Input id="cp" value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="ctx">NIT / CC (para facturación)</Label>
+            <Input id="ctx" value={clientTaxId} onChange={(e) => setClientTaxId(e.target.value)} placeholder="opcional" />
           </div>
         </CardContent>
       </Card>

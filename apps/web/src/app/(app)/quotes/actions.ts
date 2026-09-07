@@ -33,6 +33,7 @@ export interface QuoteInput {
   clientName: string;
   clientEmail?: string;
   clientPhone?: string;
+  clientTaxId?: string;
   notes?: string;
   options: QuoteOptionInput[];
 }
@@ -113,6 +114,7 @@ export async function saveQuoteAction(
         clientName: input.clientName.trim(),
         clientEmail: input.clientEmail?.trim() || null,
         clientPhone: input.clientPhone?.trim() || null,
+        clientTaxId: input.clientTaxId?.trim() || null,
         notes: input.notes?.trim() || null,
       })
       .returning({ id: schema.quotes.id });
