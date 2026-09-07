@@ -11,6 +11,7 @@ import {
   searchHotelsAction,
   getOffersAction,
   saveQuoteAction,
+  updateQuoteAction,
   type QuoteOptionInput,
   type OfferPreview,
 } from '../actions';
@@ -19,7 +20,17 @@ import type { HotelSummary } from '@/lib/liteapi/client';
 const copFmt = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
 const usdFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
-type AddedOption = QuoteOptionInput & { saleUsd: number; saleCop: number | null; roomName?: string };
+export type AddedOption = QuoteOptionInput & { saleUsd: number; saleCop: number | null; roomName?: string };
+
+export interface QuoteEditInitial {
+  quoteId: string;
+  title?: string;
+  clientName?: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  clientTaxId?: string;
+  options: AddedOption[];
+}
 
 function parseAges(input: string): number[] {
   return input
@@ -28,17 +39,18 @@ function parseAges(input: string): number[] {
     .filter((n) => Number.isFinite(n) && n >= 0 && n < 18);
 }
 
-export function QuoteBuilder() {
+export function QuoteBuilder({ initial }: { initial?: QuoteEditInitial } = {}) {
   const router = useRouter();
+  const isEdit = Boolean(initial?.quoteId);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   // Cliente
-  const [clientName, setClientName] = useState('');
-  const [clientEmail, setClientEmail] = useState('');
-  const [clientPhone, setClientPhone] = useState('');
-  const [clientTaxId, setClientTaxId] = useState('');
-  const [title, setTitle] = useState('');
+  const [clientName, setClientName] = useState(initial?.clientName ?? '');
+  const [clientEmail, setClientEmail] = useState(initial?.clientEmail ?? '');
+  const [clientPhone, setClientPhone] = useState(initial?.clientPhone ?? '');
+  const [clientTaxId, setClientTaxId] = useState(initial?.clientTaxId ?? '');
+  const [title, setTitle] = useState(initial?.title ?? '');
 
   // Búsqueda de hotel
   const [city, setCity] = useState('');
@@ -57,7 +69,7 @@ export function QuoteBuilder() {
   const [trmRate, setTrmRate] = useState<number | null>(null);
 
   // Opciones agregadas
-  const [added, setAdded] = useState<AddedOption[]>([]);
+  const [added, setAdded] = useState<AddedOption[]>(initial?.options ?? []);
 
   async function doSearch() {
     setError(null);
@@ -136,19 +148,19 @@ export function QuoteBuilder() {
       setError('Agrega al menos una opción.');
       return;
     }
+    const input = {
+      title: title || undefined,
+      clientName,
+      clientEmail: clientEmail || undefined,
+      clientPhone: clientPhone || undefined,
+      clientTaxId: clientTaxId || undefined,
+      options: added.map(({ saleUsd, saleCop, roomName, ...rest }) => rest),
+    };
     startTransition(async () => {
       try {
-        const { id } = await saveQuoteAction(
-          {
-            title: title || undefined,
-            clientName,
-            clientEmail: clientEmail || undefined,
-            clientPhone: clientPhone || undefined,
-            clientTaxId: clientTaxId || undefined,
-            options: added.map(({ saleUsd, saleCop, roomName, ...rest }) => rest),
-          },
-          { send },
-        );
+        const { id } = isEdit
+          ? await updateQuoteAction(initial!.quoteId, input, { send })
+          : await saveQuoteAction(input, { send });
         router.push(`/quotes/${id}`);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Error al guardar.');
@@ -158,7 +170,9 @@ export function QuoteBuilder() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Nueva cotización</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">
+        {isEdit ? 'Editar cotización' : 'Nueva cotización'}
+      </h1>
 
       {/* Cliente */}
       <Card>

@@ -159,6 +159,82 @@ export async function saveQuoteAction(
   return { id: quoteId };
 }
 
+// ---------- Editar un borrador (cabecera + opciones) ----------
+export async function updateQuoteAction(
+  quoteId: string,
+  input: QuoteInput,
+  opts?: { send?: boolean },
+): Promise<{ id: string; consecutivo?: string; publicToken?: string }> {
+  const { userId } = await resolveContext();
+  if (!input.clientName?.trim()) throw new Error('El nombre del cliente es obligatorio.');
+  if (input.options.length === 0) throw new Error('Agrega al menos una opción.');
+
+  const [q] = await withUser(userId, (tx: Db) =>
+    tx
+      .select({ agencyId: schema.quotes.agencyId, status: schema.quotes.status })
+      .from(schema.quotes)
+      .where(sql`${schema.quotes.id} = ${quoteId}`)
+      .limit(1),
+  );
+  if (!q) throw new Error('Cotización no encontrada.');
+  if (q.status !== 'draft') throw new Error('Solo se pueden editar borradores.');
+
+  const pricing = await loadAgencyPricing(userId, q.agencyId);
+
+  await withUser(userId, async (tx: Db) => {
+    await tx
+      .update(schema.quotes)
+      .set({
+        title: input.title ?? null,
+        clientName: input.clientName.trim(),
+        clientEmail: input.clientEmail?.trim() || null,
+        clientPhone: input.clientPhone?.trim() || null,
+        clientTaxId: input.clientTaxId?.trim() || null,
+        notes: input.notes?.trim() || null,
+      })
+      .where(sql`${schema.quotes.id} = ${quoteId}`);
+
+    await tx.delete(schema.quoteOptions).where(sql`${schema.quoteOptions.quoteId} = ${quoteId}`);
+
+    let pos = 1;
+    for (const opt of input.options) {
+      const b = priceOption(
+        pricing,
+        opt.netCostUsd,
+        { provider: opt.provider, productType: 'hotel', productId: opt.hotelId },
+        null,
+      );
+      await tx.insert(schema.quoteOptions).values({
+        quoteId,
+        position: pos++,
+        label: opt.label ?? null,
+        provider: opt.provider,
+        providerRef: (opt.providerRef ?? null) as never,
+        hotelName: opt.hotelName ?? null,
+        hotelCity: opt.hotelCity ?? null,
+        hotelStars: opt.hotelStars ?? null,
+        hotelImage: opt.hotelImage ?? null,
+        checkIn: opt.checkin,
+        checkOut: opt.checkout,
+        occupancy: opt.occupancy as never,
+        board: opt.board ?? null,
+        netCostUsd: opt.netCostUsd.toFixed(2),
+        markupPercent: b.markupPercent.toFixed(4),
+        markupFixedUsd: b.markupFixedUsd.toFixed(2),
+        bankFeePercent: b.bankFeePercent.toFixed(3),
+        saleUsd: b.saleUsd.toFixed(2),
+        saleCop: null,
+      });
+    }
+  });
+
+  if (opts?.send) {
+    const r = await sendQuoteAction(quoteId);
+    return { id: quoteId, ...r };
+  }
+  return { id: quoteId };
+}
+
 // ---------- Enviar (congela consecutivo + TRM + token público) ----------
 export async function sendQuoteAction(
   quoteId: string,

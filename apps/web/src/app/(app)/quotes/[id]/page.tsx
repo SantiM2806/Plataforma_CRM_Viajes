@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { asc, eq } from 'drizzle-orm';
-import { Download } from 'lucide-react';
+import { Download, Pencil } from 'lucide-react';
 import { getAppContext } from '@/lib/auth/session';
 import { withUser, schema } from '@crm/db';
 import { Button } from '@/components/ui/button';
@@ -57,6 +57,13 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
               <Download className="h-4 w-4" /> PDF
             </a>
           </Button>
+          {q.status === 'draft' && (
+            <Button asChild variant="outline">
+              <Link href={`/quotes/${q.id}/edit`}>
+                <Pencil className="h-4 w-4" /> Editar
+              </Link>
+            </Button>
+          )}
           {q.status === 'draft' && <SendButton quoteId={q.id} />}
         </div>
       </div>
