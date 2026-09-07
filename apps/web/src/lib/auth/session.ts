@@ -1,3 +1,5 @@
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { withUser, schema } from '@travelkit/db';
 
@@ -75,4 +77,26 @@ export async function getUserAgencies(userId: string): Promise<AgencyRef[]> {
       .from(schema.agencies)
       .orderBy(schema.agencies.name),
   );
+}
+
+export interface AppContext {
+  ctx: SessionContext;
+  agencies: AgencyRef[];
+  active: AgencyRef | null;
+}
+
+/**
+ * Contexto para las páginas autenticadas del grupo (app): sesión + agencias +
+ * agencia activa (por cookie). Redirige a /login o /onboarding según falte.
+ */
+export async function getAppContext(): Promise<AppContext> {
+  const ctx = await getSessionContext();
+  if (!ctx) redirect('/login');
+  if (!ctx.isPlatformAdmin && ctx.agencyIds.length === 0) redirect('/onboarding');
+
+  const agencies = await getUserAgencies(ctx.userId);
+  const store = await cookies();
+  const requested = store.get('active_agency')?.value;
+  const active = agencies.find((a) => a.id === requested) ?? agencies[0] ?? null;
+  return { ctx, agencies, active };
 }

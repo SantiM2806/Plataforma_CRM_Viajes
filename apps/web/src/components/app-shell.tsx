@@ -1,26 +1,9 @@
 import type { ReactNode } from 'react';
-import {
-  LayoutDashboard,
-  FileText,
-  CalendarCheck,
-  MessagesSquare,
-  BarChart3,
-  Settings,
-  Plane,
-} from 'lucide-react';
+import { Plane } from 'lucide-react';
 import { AgencySwitcher } from './agency-switcher';
 import { SignOutButton } from './signout-button';
+import { SidebarNav } from './sidebar-nav';
 import type { AgencyRef, SessionContext } from '@/lib/auth/session';
-import { cn } from '@/lib/utils';
-
-const NAV = [
-  { label: 'Dashboard', icon: LayoutDashboard, active: true },
-  { label: 'Cotizaciones', icon: FileText, soon: true },
-  { label: 'Reservas', icon: CalendarCheck, soon: true },
-  { label: 'Inbox', icon: MessagesSquare, soon: true },
-  { label: 'Reportes', icon: BarChart3, soon: true },
-  { label: 'Configuración', icon: Settings, soon: true },
-];
 
 export function AppShell({
   ctx,
@@ -42,28 +25,7 @@ export function AppShell({
           </span>
           <span className="font-semibold tracking-tight">Travelkit CRM</span>
         </div>
-        <nav className="flex-1 space-y-1 p-3">
-          {NAV.map((item) => (
-            <div
-              key={item.label}
-              className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium',
-                item.active
-                  ? 'bg-accent text-accent-foreground'
-                  : 'text-muted-foreground',
-                item.soon && 'cursor-not-allowed',
-              )}
-            >
-              <item.icon className="h-4 w-4" />
-              <span className="flex-1">{item.label}</span>
-              {item.soon && (
-                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                  Pronto
-                </span>
-              )}
-            </div>
-          ))}
-        </nav>
+        <SidebarNav />
       </aside>
 
       <div className="flex flex-col">
