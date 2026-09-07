@@ -26,7 +26,7 @@ const NAV: NavItem[] = [
   { label: 'Reservas', icon: CalendarCheck, soon: true },
   { label: 'Inbox', icon: MessagesSquare, soon: true },
   { label: 'Reportes', icon: BarChart3, soon: true },
-  { label: 'Configuración', icon: Settings, soon: true },
+  { label: 'Configuración', icon: Settings, href: '/settings' },
 ];
 
 export function SidebarNav() {

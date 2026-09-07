@@ -75,7 +75,10 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
             {q.validUntil && <p>Válida hasta: {q.validUntil}</p>}
             {q.publicToken && (
               <p className="break-all">
-                Propuesta pública: <span className="text-primary">/p/{q.publicToken}</span>
+                Propuesta pública:{' '}
+                <a href={`/p/${q.publicToken}`} target="_blank" className="text-primary hover:underline">
+                  /p/{q.publicToken}
+                </a>
               </p>
             )}
           </CardContent>

@@ -100,3 +100,19 @@ export async function getAppContext(): Promise<AppContext> {
   const active = agencies.find((a) => a.id === requested) ?? agencies[0] ?? null;
   return { ctx, agencies, active };
 }
+
+/** Usuario + agencia activa + si es admin de esa agencia. Para acciones/páginas. */
+export async function getActiveContext(): Promise<{
+  userId: string;
+  agencyId: string;
+  isAdmin: boolean;
+}> {
+  const { ctx, active } = await getAppContext();
+  if (!active) redirect('/onboarding');
+  const role = roleInAgency(ctx, active.id);
+  return {
+    userId: ctx.userId,
+    agencyId: active.id,
+    isAdmin: ctx.isPlatformAdmin || role === 'admin_agencia',
+  };
+}
