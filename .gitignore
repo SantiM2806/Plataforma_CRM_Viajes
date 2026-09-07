@@ -26,6 +26,5 @@ Thumbs.db
 # turbo
 .turbo/
 
-# supabase local
-supabase/.branches
-supabase/.temp
+# base de datos local de desarrollo
+.devdb/

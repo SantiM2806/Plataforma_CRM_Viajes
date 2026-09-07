@@ -20,6 +20,7 @@ export const appRole = pgEnum('app_role', ['super_admin', 'admin_agencia', 'agen
 export const markupScope = pgEnum('markup_scope', ['agency_default', 'provider', 'product_type', 'product']);
 export const markupCalc = pgEnum('markup_calc', ['percent', 'fixed']);
 export const quoteStatus = pgEnum('quote_status', ['draft', 'sent', 'approved', 'rejected', 'expired']);
+export const reservationStatus = pgEnum('reservation_status', ['pending', 'confirmed', 'cancelled', 'completed']);
 
 // ---------- Auth.js ----------
 export const users = pgTable('users', {
@@ -181,6 +182,38 @@ export const quoteOptions = pgTable('quote_options', {
   saleUsd: numeric('sale_usd', { precision: 12, scale: 2 }).notNull().default('0'),
   saleCop: numeric('sale_cop', { precision: 14, scale: 2 }),
   selected: boolean('selected').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const reservations = pgTable('reservations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  agencyId: uuid('agency_id')
+    .notNull()
+    .references(() => agencies.id, { onDelete: 'cascade' }),
+  quoteId: uuid('quote_id').references(() => quotes.id, { onDelete: 'set null' }),
+  quoteOptionId: uuid('quote_option_id').references(() => quoteOptions.id, { onDelete: 'set null' }),
+  agentId: uuid('agent_id')
+    .notNull()
+    .references(() => users.id),
+  consecutivo: text('consecutivo').unique(),
+  status: reservationStatus('status').notNull().default('pending'),
+  clientName: text('client_name'),
+  clientEmail: text('client_email'),
+  clientPhone: text('client_phone'),
+  hotelName: text('hotel_name'),
+  hotelCity: text('hotel_city'),
+  checkIn: date('check_in', { mode: 'string' }),
+  checkOut: date('check_out', { mode: 'string' }),
+  board: text('board'),
+  occupancy: jsonb('occupancy'),
+  netCostUsd: numeric('net_cost_usd', { precision: 12, scale: 2 }),
+  saleUsd: numeric('sale_usd', { precision: 12, scale: 2 }),
+  saleCop: numeric('sale_cop', { precision: 14, scale: 2 }),
+  trmCopPerUsd: numeric('trm_cop_per_usd', { precision: 16, scale: 6 }),
+  providerRef: jsonb('provider_ref'),
+  providerConfirmation: text('provider_confirmation'),
+  notes: text('notes'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

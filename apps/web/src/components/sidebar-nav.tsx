@@ -23,7 +23,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/' },
   { label: 'Cotizaciones', icon: FileText, href: '/quotes' },
-  { label: 'Reservas', icon: CalendarCheck, soon: true },
+  { label: 'Reservas', icon: CalendarCheck, href: '/reservations' },
   { label: 'Inbox', icon: MessagesSquare, soon: true },
   { label: 'Reportes', icon: BarChart3, soon: true },
   { label: 'Configuración', icon: Settings, href: '/settings' },
