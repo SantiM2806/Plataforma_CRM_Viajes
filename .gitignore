@@ -28,3 +28,7 @@ Thumbs.db
 
 # base de datos local de desarrollo
 .devdb/
+
+# helpers locales de capturas/presentación (rutas absolutas de la máquina)
+_shots.mjs
+_buildpres.mjs
