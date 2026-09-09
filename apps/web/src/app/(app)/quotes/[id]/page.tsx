@@ -1,24 +1,32 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { asc, eq } from 'drizzle-orm';
-import { Download, Pencil } from 'lucide-react';
+import { Download, Pencil, ShieldCheck } from 'lucide-react';
 import { getAppContext } from '@/lib/auth/session';
 import { withUser, schema } from '@crm/db';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { SendButton } from './send-button';
+import { StatusActions } from './status-actions';
+import { ShareLink } from './share-link';
 
 const copFmt = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
 const usdFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   draft: { label: 'Borrador', cls: 'bg-muted text-muted-foreground' },
-  sent: { label: 'Enviada', cls: 'bg-primary/10 text-primary' },
+  sent: { label: 'Enviada', cls: 'bg-sky-100 text-sky-700' },
   approved: { label: 'Aprobada', cls: 'bg-emerald-100 text-emerald-700' },
   rejected: { label: 'Rechazada', cls: 'bg-destructive/10 text-destructive' },
   expired: { label: 'Vencida', cls: 'bg-amber-100 text-amber-700' },
 };
+
+function fmtDate(d?: Date | string | null): string {
+  if (!d) return '';
+  const dt = new Date(d);
+  return Number.isNaN(dt.getTime()) ? '' : dt.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 
 export default async function QuoteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -38,6 +46,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
   if (!data) notFound();
   const { q, opts } = data;
   const s = STATUS[q.status] ?? STATUS.draft;
+  const baseUrl = process.env.APP_BASE_URL ?? process.env.AUTH_URL ?? 'http://localhost:3000';
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -90,17 +99,36 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
               <p>TRM: se congela al enviar</p>
             )}
             {q.validUntil && <p>Válida hasta: {q.validUntil}</p>}
-            {q.publicToken && (
-              <p className="break-all">
-                Propuesta pública:{' '}
-                <a href={`/p/${q.publicToken}`} target="_blank" className="text-primary hover:underline">
-                  /p/{q.publicToken}
-                </a>
-              </p>
-            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Compartir enlace con el cliente */}
+      {q.publicToken && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Compartir con el cliente</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ShareLink url={`${baseUrl}/p/${q.publicToken}`} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Seguimiento: aprobar/rechazar manualmente una cotización enviada */}
+      {q.status === 'sent' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Seguimiento</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <StatusActions
+              quoteId={q.id}
+              options={opts.map((o) => ({ id: o.id, hotelName: o.hotelName, saleCop: o.saleCop }))}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="overflow-hidden">
         <CardHeader>
@@ -113,6 +141,7 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
                 <th className="px-4 py-2 font-medium">Hotel</th>
                 <th className="px-4 py-2 font-medium">Estadía</th>
                 <th className="px-4 py-2 font-medium">Ocupación</th>
+                <th className="px-4 py-2 font-medium">Cancelación</th>
                 <th className="px-4 py-2 text-right font-medium">Precio</th>
               </tr>
             </thead>
@@ -134,6 +163,18 @@ export default async function QuoteDetailPage({ params }: { params: Promise<{ id
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {occ.adults ?? 0} ad{occ.children?.length ? ` + ${occ.children.length} niño(s)` : ''}
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      {o.refundable ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-600">
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                          {o.freeCancellationUntil ? `Gratis hasta ${fmtDate(o.freeCancellationUntil)}` : 'Gratuita'}
+                        </span>
+                      ) : o.refundable === false ? (
+                        <span className="text-muted-foreground">No reembolsable</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <p className="font-semibold">

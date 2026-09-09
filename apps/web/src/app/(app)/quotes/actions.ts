@@ -1,6 +1,7 @@
 'use server';
 
 import { cookies } from 'next/headers';
+import { revalidatePath } from 'next/cache';
 import { sql } from 'drizzle-orm';
 import { withUser, schema, type Db } from '@crm/db';
 import { getSessionContext, getUserAgencies } from '@/lib/auth/session';
@@ -402,4 +403,96 @@ export async function sendQuoteAction(
 
     return { consecutivo, publicToken };
   });
+}
+
+// ---------- Cambio de estado manual (seguimiento) ----------
+// Aprobar manualmente una cotización enviada (ej. el cliente confirmó por teléfono):
+// marca la opción elegida y crea la reserva efectiva.
+export async function approveQuoteAction(
+  quoteId: string,
+  optionId: string,
+): Promise<{ reservationId: string }> {
+  const { userId } = await resolveContext();
+  const result = await withUser(userId, async (tx: Db) => {
+    const [q] = await tx
+      .select()
+      .from(schema.quotes)
+      .where(sql`${schema.quotes.id} = ${quoteId}`)
+      .limit(1);
+    if (!q) throw new Error('Cotización no encontrada.');
+    if (q.status !== 'sent') throw new Error('Solo se puede aprobar una cotización enviada.');
+
+    const [o] = await tx
+      .select()
+      .from(schema.quoteOptions)
+      .where(sql`${schema.quoteOptions.id} = ${optionId} and ${schema.quoteOptions.quoteId} = ${quoteId}`)
+      .limit(1);
+    if (!o) throw new Error('Opción inválida.');
+
+    await tx
+      .update(schema.quoteOptions)
+      .set({ selected: sql`${schema.quoteOptions.id} = ${optionId}` })
+      .where(sql`${schema.quoteOptions.quoteId} = ${quoteId}`);
+
+    await tx
+      .update(schema.quotes)
+      .set({ status: 'approved', decidedAt: sql`now()` })
+      .where(sql`${schema.quotes.id} = ${quoteId}`);
+
+    const existing = await tx
+      .select({ id: schema.reservations.id })
+      .from(schema.reservations)
+      .where(sql`${schema.reservations.quoteId} = ${quoteId}`)
+      .limit(1);
+    if (existing.length > 0) return existing[0].id;
+
+    const { rows } = (await tx.execute(
+      sql`select next_consecutivo(${q.agencyId}, 'RES') as c`,
+    )) as unknown as { rows: Array<{ c: string }> };
+
+    const [r] = await tx
+      .insert(schema.reservations)
+      .values({
+        agencyId: q.agencyId,
+        quoteId,
+        quoteOptionId: o.id,
+        agentId: q.agentId,
+        consecutivo: rows[0].c,
+        status: 'pending',
+        clientName: q.clientName,
+        clientEmail: q.clientEmail,
+        clientPhone: q.clientPhone,
+        clientTaxId: q.clientTaxId,
+        hotelName: o.hotelName,
+        hotelCity: o.hotelCity,
+        checkIn: o.checkIn,
+        checkOut: o.checkOut,
+        board: o.board,
+        occupancy: o.occupancy as never,
+        netCostUsd: o.netCostUsd,
+        saleUsd: o.saleUsd,
+        saleCop: o.saleCop,
+        trmCopPerUsd: q.trmCopPerUsd,
+        providerRef: o.providerRef as never,
+        refundable: o.refundable,
+        freeCancellationUntil: o.freeCancellationUntil,
+      })
+      .returning({ id: schema.reservations.id });
+    return r.id;
+  });
+
+  revalidatePath(`/quotes/${quoteId}`);
+  revalidatePath('/reservations');
+  return { reservationId: result };
+}
+
+export async function rejectQuoteAction(quoteId: string): Promise<void> {
+  const { userId } = await resolveContext();
+  await withUser(userId, (tx: Db) =>
+    tx
+      .update(schema.quotes)
+      .set({ status: 'rejected', decidedAt: sql`now()` })
+      .where(sql`${schema.quotes.id} = ${quoteId} and ${schema.quotes.status} = 'sent'`),
+  );
+  revalidatePath(`/quotes/${quoteId}`);
 }

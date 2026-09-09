@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { eq } from 'drizzle-orm';
+import { ShieldCheck } from 'lucide-react';
 import { getAppContext } from '@/lib/auth/session';
 import { withUser, schema } from '@crm/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +11,12 @@ import { RES_STATUS } from '../status';
 
 const copFmt = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
 const usdFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
+function fmtDate(d?: Date | string | null): string {
+  if (!d) return '';
+  const dt = new Date(d);
+  return Number.isNaN(dt.getTime()) ? '' : dt.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 
 export default async function ReservationDetailPage({
   params,
@@ -71,6 +78,20 @@ export default async function ReservationDetailPage({
             </p>
             {r.providerConfirmation && (
               <p className="text-muted-foreground">Localizador: {r.providerConfirmation}</p>
+            )}
+            {r.refundable != null && (
+              <p className={cn('flex items-center gap-1 pt-1', r.refundable ? 'text-emerald-600' : 'text-muted-foreground')}>
+                {r.refundable ? (
+                  <>
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    {r.freeCancellationUntil
+                      ? `Cancelación gratis hasta ${fmtDate(r.freeCancellationUntil)}`
+                      : 'Cancelación gratuita'}
+                  </>
+                ) : (
+                  'No reembolsable'
+                )}
+              </p>
             )}
           </CardContent>
         </Card>
