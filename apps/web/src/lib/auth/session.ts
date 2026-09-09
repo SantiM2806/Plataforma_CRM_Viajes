@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { eq } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { withUser, schema } from '@crm/db';
 
@@ -16,6 +17,7 @@ export interface SessionContext {
   memberships: Membership[];
   isPlatformAdmin: boolean; // super_admin (dueño del SaaS): ve todas las agencias
   agencyIds: string[];
+  mustChangePassword: boolean;
 }
 
 /**
@@ -27,11 +29,20 @@ export async function getSessionContext(): Promise<SessionContext | null> {
   const userId = session?.user?.id;
   if (!userId) return null;
 
-  const rows = await withUser(userId, (tx) =>
-    tx
-      .select({ agency_id: schema.memberships.agencyId, role: schema.memberships.role })
-      .from(schema.memberships),
-  );
+  const [rows, userRows] = await Promise.all([
+    withUser(userId, (tx) =>
+      tx
+        .select({ agency_id: schema.memberships.agencyId, role: schema.memberships.role })
+        .from(schema.memberships),
+    ),
+    withUser(userId, (tx) =>
+      tx
+        .select({ must: schema.users.mustChangePassword })
+        .from(schema.users)
+        .where(eq(schema.users.id, userId))
+        .limit(1),
+    ),
+  ]);
   const memberships = rows as Membership[];
 
   return {
@@ -40,6 +51,7 @@ export async function getSessionContext(): Promise<SessionContext | null> {
     memberships,
     isPlatformAdmin: memberships.some((m) => m.agency_id === null && m.role === 'super_admin'),
     agencyIds: memberships.filter((m) => m.agency_id).map((m) => m.agency_id as string),
+    mustChangePassword: userRows[0]?.must ?? false,
   };
 }
 

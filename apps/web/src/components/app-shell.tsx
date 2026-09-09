@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 import { Plane } from 'lucide-react';
 import { AgencySwitcher } from './agency-switcher';
 import { SignOutButton } from './signout-button';
@@ -43,7 +44,18 @@ export function AppShell({
             <SignOutButton />
           </div>
         </header>
-        <main className="flex-1 bg-muted/30 p-4 md:p-8">{children}</main>
+        <main className="flex-1 bg-muted/30 p-4 md:p-8">
+          {ctx.mustChangePassword && (
+            <Link
+              href="/settings"
+              className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 hover:bg-amber-100"
+            >
+              <span>Estás usando una contraseña temporal. Cámbiala para asegurar tu cuenta.</span>
+              <span className="font-medium underline">Cambiar ahora →</span>
+            </Link>
+          )}
+          {children}
+        </main>
       </div>
     </div>
   );

@@ -1,11 +1,22 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { randomBytes } from 'node:crypto';
 import { and, eq, sql } from 'drizzle-orm';
-import { withUser, schema, type Db } from '@crm/db';
-import { getActiveContext } from '@/lib/auth/session';
+import { hash } from '@node-rs/argon2';
+import { db, withUser, schema, type Db } from '@crm/db';
+import { getActiveContext, getSessionContext } from '@/lib/auth/session';
 
 export type ActionState = { error?: string; ok?: boolean };
+export type UserFormState = ActionState & { tempPassword?: string; email?: string; existed?: boolean };
+
+function genTempPassword(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789abcdefghijkmnpqrstuvwxyz';
+  const bytes = randomBytes(10);
+  let s = '';
+  for (let i = 0; i < 10; i++) s += chars[bytes[i] % chars.length];
+  return s;
+}
 
 async function requireAdmin() {
   const c = await getActiveContext();
@@ -124,6 +135,81 @@ export async function saveChannelAction(
     return { ok: true };
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Error al guardar el canal.' };
+  }
+}
+
+// ---------- Gestión de usuarios/equipo ----------
+export async function addUserAction(
+  _prev: UserFormState,
+  formData: FormData,
+): Promise<UserFormState> {
+  try {
+    const { userId, agencyId } = await requireAdmin();
+    const email = String(formData.get('email') ?? '').trim().toLowerCase();
+    const name = String(formData.get('name') ?? '').trim();
+    const role = String(formData.get('role')) as 'agente' | 'contable' | 'admin_agencia';
+    if (!email.includes('@')) return { error: 'Ingresa un email válido.' };
+    if (!['agente', 'contable', 'admin_agencia'].includes(role)) return { error: 'Rol inválido.' };
+
+    const [existing] = await db
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(eq(schema.users.email, email))
+      .limit(1);
+
+    let targetId: string;
+    let tempPassword: string | undefined;
+    if (existing) {
+      targetId = existing.id;
+    } else {
+      tempPassword = genTempPassword();
+      const passwordHash = await hash(tempPassword);
+      const [created] = await db
+        .insert(schema.users)
+        .values({ email, name: name || null, passwordHash, mustChangePassword: true })
+        .returning({ id: schema.users.id });
+      targetId = created.id;
+    }
+
+    await withUser(userId, (tx: Db) =>
+      tx.insert(schema.memberships).values({ userId: targetId, agencyId, role }).onConflictDoNothing(),
+    );
+
+    revalidatePath('/settings');
+    return { ok: true, email, tempPassword, existed: Boolean(existing) };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Error al agregar el usuario.' };
+  }
+}
+
+export async function removeMemberAction(membershipId: string): Promise<void> {
+  const { userId } = await requireAdmin();
+  await withUser(userId, (tx: Db) =>
+    tx
+      .delete(schema.memberships)
+      .where(and(eq(schema.memberships.id, membershipId), sql`user_id <> ${userId}`)),
+  );
+  revalidatePath('/settings');
+}
+
+export async function changeOwnPasswordAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    const ctx = await getSessionContext();
+    if (!ctx) return { error: 'No autenticado.' };
+    const pw = String(formData.get('password') ?? '');
+    if (pw.length < 8) return { error: 'La contraseña debe tener al menos 8 caracteres.' };
+    const passwordHash = await hash(pw);
+    await db
+      .update(schema.users)
+      .set({ passwordHash, mustChangePassword: false })
+      .where(eq(schema.users.id, ctx.userId));
+    revalidatePath('/settings');
+    return { ok: true };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Error al cambiar la contraseña.' };
   }
 }
 
