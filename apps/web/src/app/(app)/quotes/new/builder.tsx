@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Trash2, Search, Plus, Star, MapPin, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
 import {
+  autocompletePlacesAction,
   searchHotelsAction,
   getOffersAction,
   saveQuoteAction,
@@ -17,6 +17,7 @@ import {
   type OfferPreview,
   type HotelResult,
 } from '../actions';
+import type { Place } from '@/lib/liteapi/client';
 
 const copFmt = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
 const usdFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
@@ -68,14 +69,46 @@ export function QuoteBuilder({ initial }: { initial?: QuoteEditInitial } = {}) {
   const [clientTaxId, setClientTaxId] = useState(initial?.clientTaxId ?? '');
   const [title, setTitle] = useState(initial?.title ?? '');
 
-  // Búsqueda
+  // Búsqueda (autocompletado destino/hotel)
   const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<Place[]>([]);
+  const [showSug, setShowSug] = useState(false);
+  const [place, setPlace] = useState<Place | null>(null);
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [checkin, setCheckin] = useState('');
   const [checkout, setCheckout] = useState('');
   const [adults, setAdults] = useState(2);
   const [childrenAges, setChildrenAges] = useState('');
   const [hotels, setHotels] = useState<HotelResult[]>([]);
   const [searching, setSearching] = useState(false);
+
+  function onQueryChange(value: string) {
+    setQuery(value);
+    setPlace(null);
+    if (debounce.current) clearTimeout(debounce.current);
+    if (value.trim().length < 2) {
+      setSuggestions([]);
+      setShowSug(false);
+      return;
+    }
+    debounce.current = setTimeout(async () => {
+      try {
+        const res = await autocompletePlacesAction(value);
+        setSuggestions(res);
+        setShowSug(true);
+      } catch {
+        setSuggestions([]);
+      }
+    }, 300);
+  }
+
+  function pickPlace(p: Place) {
+    setPlace(p);
+    setQuery(p.displayName);
+    setSuggestions([]);
+    setShowSug(false);
+  }
 
   // Opciones (tarifas) de un hotel expandido
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -88,15 +121,20 @@ export function QuoteBuilder({ initial }: { initial?: QuoteEditInitial } = {}) {
   const occ = () => ({ adults, children: parseAges(childrenAges) });
 
   async function doSearch() {
+    if (!place || !checkin || !checkout) {
+      setError('Elige un destino u hotel de la lista y las fechas.');
+      return;
+    }
     setError(null);
+    setShowSug(false);
     setSearching(true);
     setHotels([]);
     setExpandedId(null);
     setOffers([]);
     try {
-      const res = await searchHotelsAction({ query, checkin, checkout, occupancy: occ() });
+      const res = await searchHotelsAction({ placeId: place.placeId, checkin, checkout, occupancy: occ() });
       setHotels(res);
-      if (res.length === 0) setError('Sin resultados. Prueba con otro destino u hotel.');
+      if (res.length === 0) setError('Sin hoteles para ese lugar en esas fechas.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error buscando.');
     } finally {
@@ -174,7 +212,7 @@ export function QuoteBuilder({ initial }: { initial?: QuoteEditInitial } = {}) {
     });
   }
 
-  const canSearch = query.trim().length > 1 && !!checkin && !!checkout && !searching;
+  const canSearch = !!place && !!checkin && !!checkout && !searching;
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -221,15 +259,42 @@ export function QuoteBuilder({ initial }: { initial?: QuoteEditInitial } = {}) {
             <div className="grid gap-1.5">
               <Label htmlFor="q">Destino u hotel *</Label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   id="q"
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && canSearch && doSearch()}
+                  onChange={(e) => onQueryChange(e.target.value)}
+                  onFocus={() => suggestions.length > 0 && setShowSug(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && canSearch) doSearch();
+                    if (e.key === 'Escape') setShowSug(false);
+                  }}
                   placeholder="Cartagena, Punta Cana, Hilton…"
+                  autoComplete="off"
                   className="pl-9"
                 />
+                {showSug && suggestions.length > 0 && (
+                  <ul className="absolute left-0 right-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-md border bg-popover shadow-md">
+                    {suggestions.map((s) => (
+                      <li key={s.placeId}>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => pickPlace(s)}
+                          className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm hover:bg-muted"
+                        >
+                          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                          <span className="min-w-0">
+                            <span className="block truncate font-medium">{s.displayName}</span>
+                            {s.formattedAddress && s.formattedAddress !== s.displayName && (
+                              <span className="block truncate text-xs text-muted-foreground">{s.formattedAddress}</span>
+                            )}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
             <div className="grid gap-1.5">

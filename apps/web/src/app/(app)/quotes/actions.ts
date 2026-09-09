@@ -7,11 +7,13 @@ import { getSessionContext, getUserAgencies } from '@/lib/auth/session';
 import { loadAgencyPricing, priceOption } from '@/lib/pricing';
 import { getTrm } from '@/lib/trm';
 import {
+  searchPlaces,
   searchHotels,
   getMinRates,
   getRates,
   type RateOffer,
   type MinRate,
+  type Place,
 } from '@/lib/liteapi/client';
 
 // ---------- Tipos compartidos con el builder ----------
@@ -77,18 +79,28 @@ async function resolveContext(): Promise<{ userId: string; agencyId: string }> {
   return { userId: ctx.userId, agencyId: active.id };
 }
 
-// ---------- Búsqueda de hoteles (LiteAPI) — un solo input + precio mínimo ----------
+// ---------- Autocompletado de destinos/hoteles ----------
+export async function autocompletePlacesAction(query: string): Promise<Place[]> {
+  await resolveContext(); // valida sesión
+  if (!query || query.trim().length < 2) return [];
+  try {
+    return await searchPlaces(query);
+  } catch {
+    return [];
+  }
+}
+
+// ---------- Búsqueda de hoteles (por placeId) + precio mínimo ----------
 export async function searchHotelsAction(input: {
-  query: string;
+  placeId: string;
   checkin?: string;
   checkout?: string;
   occupancy?: OccupancyInput;
 }): Promise<HotelResult[]> {
   const { userId, agencyId } = await resolveContext();
-  const query = input.query?.trim();
-  if (!query) return [];
+  if (!input.placeId) return [];
 
-  const hotels = await searchHotels({ query, limit: 30 });
+  const hotels = await searchHotels({ placeId: input.placeId, limit: 30 });
   if (hotels.length === 0) return [];
 
   let minRates = new Map<string, MinRate>();

@@ -68,11 +68,34 @@ export interface MinRate {
   offerId?: string;
 }
 
+export interface Place {
+  placeId: string;
+  displayName: string;
+  formattedAddress?: string;
+  types?: string[];
+}
+
 /**
- * Búsqueda de un solo input (destino o nombre de hotel), multi-país, vía aiSearch.
+ * Autocompletado de destinos y hoteles (un solo input). Devuelve placeIds de
+ * Google que luego se usan para buscar hoteles por `placeId`.
  */
-export async function searchHotels(params: { query: string; limit?: number }): Promise<HotelSummary[]> {
-  const q = new URLSearchParams({ aiSearch: params.query, limit: String(params.limit ?? 30) });
+export async function searchPlaces(query: string, limit = 6): Promise<Place[]> {
+  if (query.trim().length < 2) return [];
+  const q = new URLSearchParams({ textQuery: query.trim() });
+  const json = await liteFetch<{ data?: any[] }>(`/data/places?${q.toString()}`);
+  return (json.data ?? []).slice(0, limit).map((p) => ({
+    placeId: String(p.placeId),
+    displayName: p.displayName ?? p.formattedAddress ?? '',
+    formattedAddress: p.formattedAddress,
+    types: p.types,
+  }));
+}
+
+/**
+ * Hoteles de un lugar (por placeId del autocompletado). Multi-país.
+ */
+export async function searchHotels(params: { placeId: string; limit?: number }): Promise<HotelSummary[]> {
+  const q = new URLSearchParams({ placeId: params.placeId, limit: String(params.limit ?? 30) });
   const json = await liteFetch<{ data?: any[] }>(`/data/hotels?${q.toString()}`);
   return (json.data ?? []).map((h) => ({
     id: String(h.id),
