@@ -2,11 +2,12 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Trash2, Search, Plus, Star } from 'lucide-react';
+import { Trash2, Search, Plus, Star, MapPin, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import {
   searchHotelsAction,
   getOffersAction,
@@ -14,8 +15,8 @@ import {
   updateQuoteAction,
   type QuoteOptionInput,
   type OfferPreview,
+  type HotelResult,
 } from '../actions';
-import type { HotelSummary } from '@/lib/liteapi/client';
 
 const copFmt = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
 const usdFmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
@@ -39,6 +40,21 @@ function parseAges(input: string): number[] {
     .filter((n) => Number.isFinite(n) && n >= 0 && n < 18);
 }
 
+function ratingLabel(r?: number): string {
+  if (!r) return '';
+  if (r >= 9) return 'Excelente';
+  if (r >= 8) return 'Muy bueno';
+  if (r >= 7) return 'Bueno';
+  if (r >= 6) return 'Agradable';
+  return 'Correcto';
+}
+
+function fmtDate(d?: string | null): string {
+  if (!d) return '';
+  const dt = new Date(d);
+  return Number.isNaN(dt.getTime()) ? '' : dt.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+}
+
 export function QuoteBuilder({ initial }: { initial?: QuoteEditInitial } = {}) {
   const router = useRouter();
   const isEdit = Boolean(initial?.quoteId);
@@ -52,60 +68,55 @@ export function QuoteBuilder({ initial }: { initial?: QuoteEditInitial } = {}) {
   const [clientTaxId, setClientTaxId] = useState(initial?.clientTaxId ?? '');
   const [title, setTitle] = useState(initial?.title ?? '');
 
-  // Búsqueda de hotel
-  const [city, setCity] = useState('');
-  const [hotelName, setHotelName] = useState('');
-  const [hotels, setHotels] = useState<HotelSummary[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [selected, setSelected] = useState<HotelSummary | null>(null);
-
-  // Estadía + tarifas
+  // Búsqueda
+  const [query, setQuery] = useState('');
   const [checkin, setCheckin] = useState('');
   const [checkout, setCheckout] = useState('');
   const [adults, setAdults] = useState(2);
   const [childrenAges, setChildrenAges] = useState('');
+  const [hotels, setHotels] = useState<HotelResult[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  // Opciones (tarifas) de un hotel expandido
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [offers, setOffers] = useState<OfferPreview[]>([]);
   const [loadingOffers, setLoadingOffers] = useState(false);
-  const [trmRate, setTrmRate] = useState<number | null>(null);
 
   // Opciones agregadas
   const [added, setAdded] = useState<AddedOption[]>(initial?.options ?? []);
+
+  const occ = () => ({ adults, children: parseAges(childrenAges) });
 
   async function doSearch() {
     setError(null);
     setSearching(true);
     setHotels([]);
-    setSelected(null);
+    setExpandedId(null);
     setOffers([]);
     try {
-      const res = await searchHotelsAction({ cityName: city, hotelName });
+      const res = await searchHotelsAction({ query, checkin, checkout, occupancy: occ() });
       setHotels(res);
-      if (res.length === 0) setError('Sin hoteles para esa búsqueda.');
+      if (res.length === 0) setError('Sin resultados. Prueba con otro destino u hotel.');
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error buscando hoteles.');
+      setError(e instanceof Error ? e.message : 'Error buscando.');
     } finally {
       setSearching(false);
     }
   }
 
-  async function loadOffers() {
-    if (!selected || !checkin || !checkout) {
-      setError('Elige hotel y fechas.');
+  async function toggleOptions(h: HotelResult) {
+    if (expandedId === h.id) {
+      setExpandedId(null);
       return;
     }
     setError(null);
-    setLoadingOffers(true);
+    setExpandedId(h.id);
     setOffers([]);
+    setLoadingOffers(true);
     try {
-      const res = await getOffersAction({
-        hotelId: selected.id,
-        checkin,
-        checkout,
-        occupancy: { adults, children: parseAges(childrenAges) },
-      });
+      const res = await getOffersAction({ hotelId: h.id, checkin, checkout, occupancy: occ() });
       setOffers(res.offers);
-      setTrmRate(res.trmRate);
-      if (res.offers.length === 0) setError('Sin tarifas disponibles para esas fechas.');
+      if (res.offers.length === 0) setError('Sin tarifas para esas fechas en este hotel.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error consultando tarifas.');
     } finally {
@@ -113,24 +124,25 @@ export function QuoteBuilder({ initial }: { initial?: QuoteEditInitial } = {}) {
     }
   }
 
-  function addOffer(o: OfferPreview) {
-    if (!selected) return;
+  function addOffer(h: HotelResult, o: OfferPreview) {
     setAdded((prev) => [
       ...prev,
       {
         label: `Opción ${prev.length + 1}`,
         provider: 'liteapi',
-        providerRef: { rateId: o.rateId, offerId: o.offerId, roomTypeId: o.roomTypeId, boardType: o.boardType },
-        hotelId: selected.id,
-        hotelName: selected.name,
-        hotelCity: selected.city,
-        hotelStars: selected.stars,
-        hotelImage: selected.mainPhoto ?? selected.thumbnail,
+        providerRef: { hotelId: h.id, rateId: o.rateId, offerId: o.offerId, roomTypeId: o.roomTypeId, boardType: o.boardType },
+        hotelId: h.id,
+        hotelName: h.name,
+        hotelCity: h.city,
+        hotelStars: h.stars,
+        hotelImage: h.image,
         checkin,
         checkout,
-        occupancy: { adults, children: parseAges(childrenAges) },
+        occupancy: occ(),
         board: o.boardName,
         netCostUsd: o.netCostUsd,
+        refundable: o.refundable,
+        freeCancellationUntil: o.freeCancellationUntil ?? null,
         saleUsd: o.saleUsd,
         saleCop: o.saleCop,
         roomName: o.name,
@@ -140,14 +152,8 @@ export function QuoteBuilder({ initial }: { initial?: QuoteEditInitial } = {}) {
 
   function save(send: boolean) {
     setError(null);
-    if (!clientName.trim()) {
-      setError('El nombre del cliente es obligatorio.');
-      return;
-    }
-    if (added.length === 0) {
-      setError('Agrega al menos una opción.');
-      return;
-    }
+    if (!clientName.trim()) return setError('El nombre del cliente es obligatorio.');
+    if (added.length === 0) return setError('Agrega al menos una opción.');
     const input = {
       title: title || undefined,
       clientName,
@@ -167,6 +173,8 @@ export function QuoteBuilder({ initial }: { initial?: QuoteEditInitial } = {}) {
       }
     });
   }
+
+  const canSearch = query.trim().length > 1 && !!checkin && !!checkout && !searching;
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -203,103 +211,145 @@ export function QuoteBuilder({ initial }: { initial?: QuoteEditInitial } = {}) {
         </CardContent>
       </Card>
 
-      {/* Buscador */}
+      {/* Buscador estilo OTA */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Agregar opción — buscar hotel</CardTitle>
+          <CardTitle className="text-base">Buscar hotel</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="grid flex-1 gap-1.5">
-              <Label htmlFor="city">Ciudad *</Label>
-              <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Cartagena" />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(3,1fr)_auto] lg:items-end">
+            <div className="grid gap-1.5">
+              <Label htmlFor="q">Destino u hotel *</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="q"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && canSearch && doSearch()}
+                  placeholder="Cartagena, Punta Cana, Hilton…"
+                  className="pl-9"
+                />
+              </div>
             </div>
-            <div className="grid flex-1 gap-1.5">
-              <Label htmlFor="hn">Nombre del hotel</Label>
-              <Input id="hn" value={hotelName} onChange={(e) => setHotelName(e.target.value)} placeholder="opcional" />
+            <div className="grid gap-1.5">
+              <Label htmlFor="ci">Check-in</Label>
+              <Input id="ci" type="date" value={checkin} onChange={(e) => setCheckin(e.target.value)} />
             </div>
-            <Button type="button" variant="outline" onClick={doSearch} disabled={searching || !city}>
-              <Search className="h-4 w-4" />
+            <div className="grid gap-1.5">
+              <Label htmlFor="co">Check-out</Label>
+              <Input id="co" type="date" value={checkout} onChange={(e) => setCheckout(e.target.value)} />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="ad">Adultos</Label>
+              <Input id="ad" type="number" min={1} value={adults} onChange={(e) => setAdults(Number(e.target.value))} />
+            </div>
+            <Button type="button" onClick={doSearch} disabled={!canSearch}>
               {searching ? 'Buscando…' : 'Buscar'}
             </Button>
           </div>
+          <div className="grid gap-1.5 sm:max-w-xs">
+            <Label htmlFor="ch">Edades de niños (opcional)</Label>
+            <Input id="ch" value={childrenAges} onChange={(e) => setChildrenAges(e.target.value)} placeholder="ej: 5, 8" />
+          </div>
 
+          {/* Resultados */}
           {hotels.length > 0 && (
-            <div className="max-h-56 space-y-1 overflow-y-auto rounded-md border p-2">
+            <div className="space-y-3">
               {hotels.map((h) => (
-                <button
-                  key={h.id}
-                  type="button"
-                  onClick={() => setSelected(h)}
-                  className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-muted ${
-                    selected?.id === h.id ? 'bg-accent text-accent-foreground' : ''
-                  }`}
-                >
-                  <span className="flex-1">{h.name}</span>
-                  {h.stars ? (
-                    <span className="flex items-center gap-0.5 text-xs text-amber-500">
-                      {h.stars} <Star className="h-3 w-3 fill-current" />
-                    </span>
-                  ) : null}
-                  <span className="text-xs text-muted-foreground">{h.city}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {selected && (
-            <div className="space-y-3 rounded-md border bg-muted/30 p-3">
-              <p className="text-sm font-medium">{selected.name}</p>
-              <div className="flex flex-wrap items-end gap-3">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="ci">Check-in</Label>
-                  <Input id="ci" type="date" value={checkin} onChange={(e) => setCheckin(e.target.value)} />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="co">Check-out</Label>
-                  <Input id="co" type="date" value={checkout} onChange={(e) => setCheckout(e.target.value)} />
-                </div>
-                <div className="grid w-20 gap-1.5">
-                  <Label htmlFor="ad">Adultos</Label>
-                  <Input id="ad" type="number" min={1} value={adults} onChange={(e) => setAdults(Number(e.target.value))} />
-                </div>
-                <div className="grid flex-1 gap-1.5">
-                  <Label htmlFor="ch">Edades niños</Label>
-                  <Input id="ch" value={childrenAges} onChange={(e) => setChildrenAges(e.target.value)} placeholder="ej: 5, 8" />
-                </div>
-                <Button type="button" variant="outline" onClick={loadOffers} disabled={loadingOffers}>
-                  {loadingOffers ? 'Consultando…' : 'Ver tarifas'}
-                </Button>
-              </div>
-
-              {trmRate && (
-                <p className="text-xs text-muted-foreground">
-                  TRM usada (indicativa): {copFmt.format(trmRate)} / USD
-                </p>
-              )}
-
-              {offers.length > 0 && (
-                <div className="space-y-1">
-                  {offers.map((o, i) => (
-                    <div key={i} className="flex items-center gap-3 rounded border bg-card px-3 py-2 text-sm">
-                      <div className="flex-1">
-                        <p className="font-medium">{o.name ?? 'Habitación'}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {o.boardName ?? o.boardType} · costo {usdFmt.format(o.netCostUsd)}
-                          {o.refundable ? ' · reembolsable' : ''}
-                        </p>
+                <div key={h.id} className="overflow-hidden rounded-xl border bg-card">
+                  <div className="flex flex-col gap-4 p-3 sm:flex-row">
+                    {h.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={h.image} alt={h.name} className="h-32 w-full shrink-0 rounded-lg object-cover sm:w-44" />
+                    ) : (
+                      <div className="flex h-32 w-full shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground sm:w-44">
+                        <MapPin className="h-6 w-6" />
                       </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="truncate font-semibold">{h.name}</h3>
+                        {h.stars ? (
+                          <span className="flex shrink-0 items-center gap-0.5 text-xs text-amber-500">
+                            {Array.from({ length: h.stars }).map((_, i) => (
+                              <Star key={i} className="h-3 w-3 fill-current" />
+                            ))}
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground">
+                        <MapPin className="h-3.5 w-3.5" /> {h.city}
+                        {h.country ? `, ${h.country}` : ''}
+                      </p>
+                      {h.rating ? (
+                        <div className="mt-1.5 flex items-center gap-2 text-sm">
+                          <span className="rounded bg-primary px-1.5 py-0.5 text-xs font-bold text-primary-foreground">
+                            {h.rating.toFixed(1)}
+                          </span>
+                          <span className="font-medium">{ratingLabel(h.rating)}</span>
+                          {h.reviewCount ? (
+                            <span className="text-xs text-muted-foreground">{h.reviewCount} reseñas</span>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end justify-between gap-2">
                       <div className="text-right">
-                        <p className="font-semibold">{o.saleCop ? copFmt.format(o.saleCop) : usdFmt.format(o.saleUsd)}</p>
-                        <p className="text-xs text-muted-foreground">{usdFmt.format(o.saleUsd)}</p>
+                        <p className="text-xs text-muted-foreground">desde</p>
+                        <p className="text-lg font-bold">
+                          {h.minSaleCop != null ? copFmt.format(h.minSaleCop) : '—'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">total, {checkin} → {checkout}</p>
                       </div>
-                      <Button type="button" size="sm" onClick={() => addOffer(o)}>
-                        <Plus className="h-4 w-4" />
+                      <Button type="button" variant={expandedId === h.id ? 'secondary' : 'default'} size="sm" onClick={() => toggleOptions(h)}>
+                        {expandedId === h.id ? 'Ocultar' : 'Ver opciones'}
                       </Button>
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Opciones (tarifas) del hotel */}
+                  {expandedId === h.id && (
+                    <div className="border-t bg-muted/30 p-3">
+                      {loadingOffers ? (
+                        <p className="py-4 text-center text-sm text-muted-foreground">Consultando tarifas…</p>
+                      ) : offers.length === 0 ? (
+                        <p className="py-4 text-center text-sm text-muted-foreground">Sin tarifas disponibles.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {offers.map((o, i) => (
+                            <div key={i} className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2 text-sm">
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate font-medium">{o.name ?? 'Habitación'}</p>
+                                <p className="text-xs text-muted-foreground">{o.boardName ?? o.boardType}</p>
+                                <p className="mt-0.5 text-xs">
+                                  {o.refundable ? (
+                                    <span className="inline-flex items-center gap-1 text-emerald-600">
+                                      <ShieldCheck className="h-3.5 w-3.5" />
+                                      {o.freeCancellationUntil
+                                        ? `Cancelación gratis hasta ${fmtDate(o.freeCancellationUntil)}`
+                                        : 'Cancelación gratuita'}
+                                    </span>
+                                  ) : (
+                                    <span className="text-muted-foreground">No reembolsable</span>
+                                  )}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-semibold">{o.saleCop ? copFmt.format(o.saleCop) : usdFmt.format(o.saleUsd)}</p>
+                                <p className="text-xs text-muted-foreground">{usdFmt.format(o.saleUsd)}</p>
+                              </div>
+                              <Button type="button" size="sm" onClick={() => addOffer(h, o)}>
+                                <Plus className="h-4 w-4" /> Agregar
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              )}
+              ))}
             </div>
           )}
         </CardContent>
@@ -313,12 +363,13 @@ export function QuoteBuilder({ initial }: { initial?: QuoteEditInitial } = {}) {
           </CardHeader>
           <CardContent className="space-y-2">
             {added.map((a, i) => (
-              <div key={i} className="flex items-center gap-3 rounded border px-3 py-2 text-sm">
-                <div className="flex-1">
-                  <p className="font-medium">{a.hotelName}</p>
+              <div key={i} className="flex items-center gap-3 rounded-lg border px-3 py-2 text-sm">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{a.hotelName}</p>
                   <p className="text-xs text-muted-foreground">
                     {a.roomName} · {a.checkin} → {a.checkout} · {a.occupancy.adults} ad
                     {a.occupancy.children.length ? ` + ${a.occupancy.children.length} niño(s)` : ''}
+                    {a.refundable ? ' · cancelación gratis' : ''}
                   </p>
                 </div>
                 <p className="font-semibold">{a.saleCop ? copFmt.format(a.saleCop) : usdFmt.format(a.saleUsd)}</p>

@@ -6,7 +6,13 @@ import { withUser, schema, type Db } from '@crm/db';
 import { getSessionContext, getUserAgencies } from '@/lib/auth/session';
 import { loadAgencyPricing, priceOption } from '@/lib/pricing';
 import { getTrm } from '@/lib/trm';
-import { searchHotels, getRates, type HotelSummary, type RateOffer } from '@/lib/liteapi/client';
+import {
+  searchHotels,
+  getMinRates,
+  getRates,
+  type RateOffer,
+  type MinRate,
+} from '@/lib/liteapi/client';
 
 // ---------- Tipos compartidos con el builder ----------
 export interface OccupancyInput {
@@ -27,6 +33,8 @@ export interface QuoteOptionInput {
   occupancy: OccupancyInput;
   board?: string;
   netCostUsd: number;
+  refundable?: boolean | null;
+  freeCancellationUntil?: string | null;
 }
 export interface QuoteInput {
   title?: string;
@@ -43,6 +51,20 @@ export interface OfferPreview extends RateOffer {
   saleCop: number | null;
 }
 
+export interface HotelResult {
+  id: string;
+  name: string;
+  city?: string;
+  country?: string;
+  stars?: number;
+  rating?: number;
+  reviewCount?: number;
+  image?: string;
+  address?: string;
+  minSaleUsd: number | null;
+  minSaleCop: number | null;
+}
+
 // ---------- Resolución de contexto (usuario + agencia activa) ----------
 async function resolveContext(): Promise<{ userId: string; agencyId: string }> {
   const ctx = await getSessionContext();
@@ -55,14 +77,68 @@ async function resolveContext(): Promise<{ userId: string; agencyId: string }> {
   return { userId: ctx.userId, agencyId: active.id };
 }
 
-// ---------- Búsqueda de hoteles (LiteAPI) ----------
+// ---------- Búsqueda de hoteles (LiteAPI) — un solo input + precio mínimo ----------
 export async function searchHotelsAction(input: {
-  cityName: string;
-  hotelName?: string;
-}): Promise<HotelSummary[]> {
-  await resolveContext(); // valida sesión
-  if (!input.cityName?.trim()) return [];
-  return searchHotels({ cityName: input.cityName.trim(), hotelName: input.hotelName?.trim() });
+  query: string;
+  checkin?: string;
+  checkout?: string;
+  occupancy?: OccupancyInput;
+}): Promise<HotelResult[]> {
+  const { userId, agencyId } = await resolveContext();
+  const query = input.query?.trim();
+  if (!query) return [];
+
+  const hotels = await searchHotels({ query, limit: 30 });
+  if (hotels.length === 0) return [];
+
+  let minRates = new Map<string, MinRate>();
+  let pricing: Awaited<ReturnType<typeof loadAgencyPricing>> | null = null;
+  let trmRate: number | null = null;
+
+  if (input.checkin && input.checkout && input.occupancy) {
+    const [mr, pr, trm] = await Promise.all([
+      getMinRates({
+        hotelIds: hotels.map((h) => h.id),
+        checkin: input.checkin,
+        checkout: input.checkout,
+        occupancies: [input.occupancy],
+      }).catch(() => new Map<string, MinRate>()),
+      loadAgencyPricing(userId, agencyId),
+      getTrm().catch(() => null),
+    ]);
+    minRates = mr;
+    pricing = pr;
+    trmRate = trm?.rate ?? null;
+  }
+
+  return hotels.map((h) => {
+    const mr = minRates.get(h.id);
+    let minSaleUsd: number | null = null;
+    let minSaleCop: number | null = null;
+    if (mr && pricing) {
+      const b = priceOption(
+        pricing,
+        mr.priceUsd,
+        { provider: 'liteapi', productType: 'hotel', productId: h.id },
+        trmRate,
+      );
+      minSaleUsd = b.saleUsd;
+      minSaleCop = b.saleCop;
+    }
+    return {
+      id: h.id,
+      name: h.name,
+      city: h.city,
+      country: h.country,
+      stars: h.stars,
+      rating: h.rating,
+      reviewCount: h.reviewCount,
+      image: h.mainPhoto ?? h.thumbnail,
+      address: h.address,
+      minSaleUsd,
+      minSaleCop,
+    };
+  });
 }
 
 // ---------- Tarifas de un hotel + precio de venta (preview) ----------
@@ -147,6 +223,8 @@ export async function saveQuoteAction(
         bankFeePercent: b.bankFeePercent.toFixed(3),
         saleUsd: b.saleUsd.toFixed(2),
         saleCop: null,
+        refundable: opt.refundable ?? null,
+        freeCancellationUntil: opt.freeCancellationUntil ? new Date(opt.freeCancellationUntil) : null,
       });
     }
     return q.id;
@@ -224,6 +302,8 @@ export async function updateQuoteAction(
         bankFeePercent: b.bankFeePercent.toFixed(3),
         saleUsd: b.saleUsd.toFixed(2),
         saleCop: null,
+        refundable: opt.refundable ?? null,
+        freeCancellationUntil: opt.freeCancellationUntil ? new Date(opt.freeCancellationUntil) : null,
       });
     }
   });

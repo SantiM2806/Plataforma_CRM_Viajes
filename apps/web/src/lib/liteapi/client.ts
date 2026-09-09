@@ -34,8 +34,10 @@ export interface HotelSummary {
   name: string;
   city?: string;
   country?: string;
+  address?: string;
   stars?: number;
   rating?: number;
+  reviewCount?: number;
   thumbnail?: string;
   mainPhoto?: string;
 }
@@ -54,48 +56,74 @@ export interface RateOffer {
   boardType?: string; // RO, BB, etc.
   boardName?: string;
   refundable: boolean;
-  netCostUsd: number; // costo (ver nota abajo)
+  freeCancellationUntil?: string | null; // fecha límite de cancelación gratuita
+  netCostUsd: number; // costo neto (retailRate.total)
   currency: string;
   cancellationPolicies?: unknown;
 }
 
-/**
- * Busca hoteles por ciudad (+ nombre opcional). Colombia por defecto.
- */
-export async function searchHotels(params: {
-  cityName: string;
-  countryCode?: string;
-  hotelName?: string;
-  limit?: number;
-}): Promise<HotelSummary[]> {
-  const q = new URLSearchParams({
-    countryCode: params.countryCode ?? 'CO',
-    cityName: params.cityName,
-    limit: String(params.limit ?? 25),
-  });
-  if (params.hotelName) q.set('hotelName', params.hotelName);
+export interface MinRate {
+  hotelId: string;
+  priceUsd: number; // costo neto mínimo
+  offerId?: string;
+}
 
+/**
+ * Búsqueda de un solo input (destino o nombre de hotel), multi-país, vía aiSearch.
+ */
+export async function searchHotels(params: { query: string; limit?: number }): Promise<HotelSummary[]> {
+  const q = new URLSearchParams({ aiSearch: params.query, limit: String(params.limit ?? 30) });
   const json = await liteFetch<{ data?: any[] }>(`/data/hotels?${q.toString()}`);
-  const list = json.data ?? [];
-  return list.map((h) => ({
+  return (json.data ?? []).map((h) => ({
     id: String(h.id),
     name: h.name,
     city: h.city,
-    country: h.country,
+    country: typeof h.country === 'string' ? h.country.toUpperCase() : undefined,
+    address: h.address,
     stars: h.stars,
     rating: h.rating,
+    reviewCount: h.reviewCount,
     thumbnail: h.thumbnail,
     mainPhoto: h.main_photo,
   }));
 }
 
 /**
- * Tarifas de un hotel específico para fechas + ocupación (con edades de niños).
- * Devuelve una oferta por tarifa (aplanado).
- *
- * NOTA DE PRECIO: usamos `retailRate.total` como COSTO NETO sobre el que la
- * agencia aplica sus markups. Verifícalo contra tu cuenta LiteAPI: si tu "neto"
- * real es otro campo, cámbialo en `extractNetCost`.
+ * Precio mínimo (neto) por hotel para fechas + ocupación. Una sola llamada para
+ * muchos hoteles: sirve para mostrar "desde $X" en cada tarjeta.
+ */
+export async function getMinRates(params: {
+  hotelIds: string[];
+  checkin: string;
+  checkout: string;
+  occupancies: Occupancy[];
+  currency?: string;
+  guestNationality?: string;
+}): Promise<Map<string, MinRate>> {
+  const out = new Map<string, MinRate>();
+  if (params.hotelIds.length === 0) return out;
+  const body = {
+    hotelIds: params.hotelIds,
+    checkin: params.checkin,
+    checkout: params.checkout,
+    currency: params.currency ?? 'USD',
+    guestNationality: params.guestNationality ?? 'CO',
+    occupancies: params.occupancies.map((o) => ({ adults: o.adults, children: o.children })),
+  };
+  const json = await liteFetch<{ data?: any[] }>(`/hotels/min-rates`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+  for (const r of json.data ?? []) {
+    const id = String(r.hotelId);
+    out.set(id, { hotelId: id, priceUsd: Number(r.price), offerId: r.offerId });
+  }
+  return out;
+}
+
+/**
+ * Tarifas completas de un hotel (todas las habitaciones/regímenes) para fechas +
+ * ocupación. `retailRate.total` = costo neto sobre el que se aplican los markups.
  */
 export async function getRates(params: {
   hotelId: string;
@@ -123,6 +151,7 @@ export async function getRates(params: {
   for (const hotel of json.data ?? []) {
     for (const rt of hotel.roomTypes ?? []) {
       for (const rate of rt.rates ?? []) {
+        const canc = parseCancellation(rate);
         offers.push({
           hotelId: String(hotel.hotelId ?? params.hotelId),
           offerId: rt.offerId,
@@ -131,7 +160,8 @@ export async function getRates(params: {
           name: rate.name,
           boardType: rate.boardType,
           boardName: rate.boardName,
-          refundable: rate.cancellationPolicies?.refundableTag === 'RFN',
+          refundable: canc.refundable,
+          freeCancellationUntil: canc.freeUntil ?? null,
           netCostUsd: extractNetCost(rate),
           currency: extractCurrency(rate) ?? params.currency ?? 'USD',
           cancellationPolicies: rate.cancellationPolicies,
@@ -139,8 +169,19 @@ export async function getRates(params: {
       }
     }
   }
-  // Ordena por costo ascendente.
   return offers.sort((a, b) => a.netCostUsd - b.netCostUsd);
+}
+
+function parseCancellation(rate: any): { refundable: boolean; freeUntil?: string } {
+  const cp = rate?.cancellationPolicies;
+  const refundable = cp?.refundableTag === 'RFN';
+  let freeUntil: string | undefined;
+  const infos = cp?.cancelPolicyInfos;
+  if (refundable && Array.isArray(infos) && infos.length) {
+    const times = infos.map((i: any) => i?.cancelTime).filter(Boolean).sort();
+    freeUntil = times[0];
+  }
+  return { refundable, freeUntil };
 }
 
 function extractNetCost(rate: any): number {

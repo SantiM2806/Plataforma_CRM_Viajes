@@ -38,6 +38,8 @@ export default async function EditQuotePage({ params }: { params: Promise<{ id: 
       occupancy: (o.occupancy as { adults: number; children: number[] }) ?? { adults: 0, children: [] },
       board: o.board ?? undefined,
       netCostUsd: Number(o.netCostUsd),
+      refundable: o.refundable ?? null,
+      freeCancellationUntil: o.freeCancellationUntil ? new Date(o.freeCancellationUntil).toISOString() : null,
       saleUsd: Number(o.saleUsd),
       saleCop: o.saleCop != null ? Number(o.saleCop) : null,
       roomName: o.board ?? undefined,
