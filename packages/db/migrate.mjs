@@ -1,7 +1,8 @@
-// Runner de migraciones minimalista para Supabase self-hosted.
-// Aplica en orden los .sql de ./migrations que aún no estén registrados.
-// Uso: DATABASE_URL=postgres://... node packages/db/migrate.mjs
-import { readFileSync, readdirSync } from 'node:fs';
+// Runner de migraciones para PostgreSQL. Aplica en orden los .sql de ./migrations
+// que aún no estén registrados. Usa DATABASE_URL (rol admin/owner).
+// Uso:  pnpm db:migrate     (lee apps/web/.env.local si DATABASE_URL no está en el entorno)
+//   o:  DATABASE_URL=postgres://... node packages/db/migrate.mjs
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import pg from 'pg';
@@ -9,8 +10,26 @@ import pg from 'pg';
 const here = dirname(fileURLToPath(import.meta.url));
 const dir = join(here, 'migrations');
 
+// Carga variables desde apps/web/.env.local (y .env) si no están en el entorno.
+function loadEnvFile(path) {
+  if (!existsSync(path)) return;
+  for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/i);
+    if (!m || line.trim().startsWith('#')) continue;
+    const key = m[1];
+    let val = m[2];
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    if (process.env[key] === undefined) process.env[key] = val;
+  }
+}
+const repoRoot = join(here, '..', '..');
+loadEnvFile(join(repoRoot, 'apps', 'web', '.env.local'));
+loadEnvFile(join(repoRoot, '.env'));
+
 if (!process.env.DATABASE_URL) {
-  console.error('Falta DATABASE_URL en el entorno.');
+  console.error('Falta DATABASE_URL. Ponlo en apps/web/.env.local o en el entorno.');
   process.exit(1);
 }
 
