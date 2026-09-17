@@ -38,8 +38,8 @@ function usd(n: number | null): string {
   return 'USD ' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-const BRAND = '#BBCF26';
-const BRAND_DARK = '#556310';
+const BRAND = '#6d28d9';
+const BRAND_DARK = '#6d28d9';
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, color: '#1f2430', fontFamily: 'Helvetica' },
   header: {
@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  optionSelected: { borderColor: BRAND, borderWidth: 1.5, backgroundColor: '#f7fadf' },
+  optionSelected: { borderColor: BRAND, borderWidth: 1.5, backgroundColor: '#faf7ff' },
   hotel: { fontSize: 12, fontFamily: 'Helvetica-Bold', marginBottom: 3 },
   detail: { color: '#6b7280', marginBottom: 1 },
   priceBox: { alignItems: 'flex-end', justifyContent: 'center', minWidth: 120 },
