@@ -173,6 +173,42 @@ No es necesario para usar la app: la TRM también se consulta al vuelo cuando se
 
 ---
 
+## 11. Iterar y actualizar el app
+
+### Mientras desarrollas (recarga en vivo)
+Con `pnpm --filter @crm/web dev` **corriendo**, cada vez que guardas un archivo el navegador se **recarga solo**. No necesitas reiniciar nada. Solo edita y mira el cambio en http://localhost:3000.
+
+### Traer cambios nuevos desde GitHub
+Cuando haya actualizaciones en el repo:
+
+```bash
+git pull                 # trae los cambios
+pnpm install             # solo hace falta si cambiaron dependencias
+pnpm db:migrate          # solo hace falta si hay migraciones nuevas (es seguro correrlo siempre)
+```
+
+Si el `pnpm dev` estaba corriendo, con `git pull` la app se recarga sola. Si cambiaron dependencias o migraciones, reinícialo (`Ctrl+C` y de nuevo `pnpm --filter @crm/web dev`).
+
+### Guardar TUS cambios en GitHub
+
+```bash
+git add -A
+git commit -m "describe tu cambio"
+git push
+```
+
+### Parar / reiniciar
+- **Parar la app:** `Ctrl+C` en la terminal del `pnpm dev`.
+- **Reiniciar la app:** `pnpm --filter @crm/web dev`.
+- **Parar la base (Docker):** `docker compose -f deploy/docker-compose.yml stop postgres` — tus datos se conservan; para arrancarla otra vez, `... start postgres`.
+
+### Verificar que todo compila antes de subir (opcional)
+```bash
+pnpm --filter @crm/web build
+```
+
+---
+
 ## Resumen ultra-rápido (con Docker)
 
 ```bash
